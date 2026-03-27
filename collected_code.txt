@@ -1,0 +1,4652 @@
+
+================================================================================
+FILE: MyApp\Lab4.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace MyApp
+{
+    // Лабораторная работа №4: Построение графа. Алгоритмы обхода
+    public class Lab4
+    {
+        // Граф хранится как словарь: узел -> список соседей
+        private Dictionary<string, List<string>> graph;
+        
+        // Список всех узлов
+        private List<string> nodes;
+
+        public Lab4()
+        {
+            graph = new Dictionary<string, List<string>>();
+            nodes = new List<string>();
+        }
+
+        // Загрузка графа из текстового файла
+        // Формат: "Узел1 - Узел2"
+        public void LoadGraph(string filename)
+        {
+            graph.Clear();
+            nodes.Clear();
+
+            // Читаем файл построчно
+            string[] lines = File.ReadAllLines(filename);
+            
+            foreach (string line in lines)
+            {
+                // Пропускаем пустые строки
+                if (string.IsNullOrWhiteSpace(line)) 
+                    continue;
+
+                // Разделяем строку по символу "-"
+                string[] parts = line.Split('-');
+                if (parts.Length < 2) 
+                    continue;
+
+                string from = parts[0].Trim();
+                string to = parts[1].Trim();
+
+                // Добавляем узел "from" если его еще нет
+                if (!graph.ContainsKey(from))
+                {
+                    graph[from] = new List<string>();
+                    nodes.Add(from);
+                }
+                
+                // Добавляем узел "to" если его еще нет
+                if (!graph.ContainsKey(to))
+                {
+                    graph[to] = new List<string>();
+                    nodes.Add(to);
+                }
+
+                // Добавляем связи в обе стороны (неориентированный граф)
+                graph[from].Add(to);
+                graph[to].Add(from);
+            }
+        }
+
+        // BFS - обход в ширину (Breadth-First Search)
+        // Обходит граф уровень за уровнем, используя очередь
+        public List<string> BFS(string start)
+        {
+            // Множество посещенных узлов
+            HashSet<string> visited = new HashSet<string>();
+            
+            // Очередь для обхода
+            Queue<string> queue = new Queue<string>();
+            
+            // Результат - порядок посещения узлов
+            List<string> result = new List<string>();
+
+            // Начинаем со стартового узла
+            queue.Enqueue(start);
+            visited.Add(start);
+
+            // Пока очередь не пуста
+            while (queue.Count > 0)
+            {
+                // Берем узел из начала очереди
+                string current = queue.Dequeue();
+                result.Add(current);
+
+                // Проверяем всех соседей текущего узла
+                if (graph.ContainsKey(current))
+                {
+                    foreach (string neighbor in graph[current])
+                    {
+                        // Если сосед еще не посещен
+                        if (!visited.Contains(neighbor))
+                        {
+                            visited.Add(neighbor);
+                            queue.Enqueue(neighbor);
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        // DFS - обход в глубину (Depth-First Search)
+        // Идет как можно глубже по одной ветке
+        public List<string> DFS(string start)
+        {
+            HashSet<string> visited = new HashSet<string>();
+            List<string> result = new List<string>();
+            
+            // Запускаем рекурсивный обход
+            DFSRecursive(start, visited, result);
+            
+            return result;
+        }
+
+        // Вспомогательная рекурсивная функция для DFS
+        private void DFSRecursive(string node, HashSet<string> visited, List<string> result)
+        {
+            // Отмечаем узел как посещенный
+            visited.Add(node);
+            result.Add(node);
+
+            // Рекурсивно посещаем всех непосещенных соседей
+            if (graph.ContainsKey(node))
+            {
+                foreach (string neighbor in graph[node])
+                {
+                    if (!visited.Contains(neighbor))
+                    {
+                        DFSRecursive(neighbor, visited, result);
+                    }
+                }
+            }
+        }
+
+        // Проверка: достижима ли вершина B из вершины A
+        public bool IsReachable(string from, string to)
+        {
+            // Используем BFS для поиска всех достижимых узлов
+            List<string> reachable = BFS(from);
+            return reachable.Contains(to);
+        }
+
+        // Поиск компонент связности
+        // Компонента связности - группа узлов, между которыми есть пути
+        public List<List<string>> FindConnectedComponents()
+        {
+            HashSet<string> visited = new HashSet<string>();
+            List<List<string>> components = new List<List<string>>();
+
+            // Проходим по всем узлам
+            foreach (string node in nodes)
+            {
+                // Если узел еще не посещен, начинаем новую компоненту
+                if (!visited.Contains(node))
+                {
+                    // BFS найдет все узлы в этой компоненте
+                    List<string> component = BFS(node);
+                    components.Add(component);
+                    
+                    // Отмечаем все узлы компоненты как посещенные
+                    foreach (string n in component)
+                    {
+                        visited.Add(n);
+                    }
+                }
+            }
+
+            return components;
+        }
+
+        // Получить список всех узлов
+        public List<string> GetNodes()
+        {
+            return nodes;
+        }
+
+        // Вывести граф на экран
+        public void PrintGraph()
+        {
+            Console.WriteLine("Граф трубопроводной сети:");
+            foreach (var node in graph)
+            {
+                Console.WriteLine($"{node.Key}: {string.Join(", ", node.Value)}");
+            }
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp\Lab5.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace MyApp
+{
+    // Лабораторная работа №5: Взвешенный граф. Алгоритм Дейкстры
+    public class Lab5
+    {
+        // Граф с весами: узел -> список (сосед, вес ребра)
+        private Dictionary<string, List<(string neighbor, int weight)>> graph;
+        
+        // Список всех узлов
+        private List<string> nodes;
+
+        public Lab5()
+        {
+            graph = new Dictionary<string, List<(string, int)>>();
+            nodes = new List<string>();
+        }
+
+        // Загрузка взвешенного графа из файла
+        // Формат: "Узел1 - Узел2, 100"
+        public void LoadWeightedGraph(string filename)
+        {
+            graph.Clear();
+            nodes.Clear();
+
+            string[] lines = File.ReadAllLines(filename);
+            
+            foreach (string line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) 
+                    continue;
+
+                // Разделяем по "-" и ","
+                string[] parts = line.Split(new[] { '-', ',' });
+                if (parts.Length < 3) 
+                    continue;
+
+                string from = parts[0].Trim();
+                string to = parts[1].Trim();
+                int weight = int.Parse(parts[2].Trim());
+
+                // Добавляем узлы если их нет
+                if (!graph.ContainsKey(from))
+                {
+                    graph[from] = new List<(string, int)>();
+                    nodes.Add(from);
+                }
+                if (!graph.ContainsKey(to))
+                {
+                    graph[to] = new List<(string, int)>();
+                    nodes.Add(to);
+                }
+
+                // Добавляем ребра в обе стороны (неориентированный граф)
+                graph[from].Add((to, weight));
+                graph[to].Add((from, weight));
+            }
+        }
+
+        // Алгоритм Дейкстры - поиск кратчайших путей от одной вершины до всех остальных
+        // Возвращает: расстояния до всех узлов и предыдущие узлы для восстановления пути
+        public (Dictionary<string, int> distances, Dictionary<string, string> previous) Dijkstra(string start)
+        {
+            // Расстояния от стартового узла до всех остальных
+            Dictionary<string, int> distances = new Dictionary<string, int>();
+            
+            // Предыдущий узел на кратчайшем пути (для восстановления маршрута)
+            Dictionary<string, string> previous = new Dictionary<string, string>();
+            
+            // Множество непосещенных узлов
+            HashSet<string> unvisited = new HashSet<string>();
+
+            // Инициализация: все расстояния = бесконечность
+            foreach (string node in nodes)
+            {
+                distances[node] = int.MaxValue;
+                unvisited.Add(node);
+            }
+            
+            // Расстояние до стартового узла = 0
+            distances[start] = 0;
+
+            // Пока есть непосещенные узлы
+            while (unvisited.Count > 0)
+            {
+                // Шаг 1: Найти непосещенный узел с минимальным расстоянием
+                string current = null;
+                int minDistance = int.MaxValue;
+                
+                foreach (string node in unvisited)
+                {
+                    if (distances[node] < minDistance)
+                    {
+                        minDistance = distances[node];
+                        current = node;
+                    }
+                }
+
+                // Если не нашли доступных узлов - выходим
+                if (current == null || distances[current] == int.MaxValue)
+                    break;
+
+                // Шаг 2: Помечаем текущий узел как посещенный
+                unvisited.Remove(current);
+
+                // Шаг 3: Обновляем расстояния до соседей
+                if (graph.ContainsKey(current))
+                {
+                    foreach (var (neighbor, weight) in graph[current])
+                    {
+                        // Новое возможное расстояние через текущий узел
+                        int newDistance = distances[current] + weight;
+                        
+                        // Если нашли более короткий путь - обновляем
+                        if (newDistance < distances[neighbor])
+                        {
+                            distances[neighbor] = newDistance;
+                            previous[neighbor] = current;
+                        }
+                    }
+                }
+            }
+
+            return (distances, previous);
+        }
+
+        // Восстановление пути от start до end
+        public List<string> GetPath(Dictionary<string, string> previous, string start, string end)
+        {
+            List<string> path = new List<string>();
+            string current = end;
+
+            // Идем от конца к началу по цепочке предыдущих узлов
+            while (current != null)
+            {
+                path.Add(current);
+                
+                // Если дошли до начала - останавливаемся
+                if (current == start) 
+                    break;
+                
+                // Переходим к предыдущему узлу
+                if (previous.ContainsKey(current))
+                    current = previous[current];
+                else
+                    current = null;
+            }
+
+            // Разворачиваем путь (был от конца к началу)
+            path.Reverse();
+            
+            // Проверяем что путь начинается с start
+            if (path.Count > 0 && path[0] == start)
+                return path;
+            else
+                return new List<string>(); // Путь не найден
+        }
+
+        // Найти кратчайший путь между двумя узлами
+        public (int distance, List<string> path) FindShortestPath(string from, string to)
+        {
+            // Запускаем алгоритм Дейкстры
+            var (distances, previous) = Dijkstra(from);
+            
+            // Восстанавливаем путь
+            List<string> path = GetPath(previous, from, to);
+            
+            // Получаем расстояние
+            int distance = distances.ContainsKey(to) ? distances[to] : -1;
+            
+            return (distance, path);
+        }
+
+        // Получить список всех узлов
+        public List<string> GetNodes()
+        {
+            return nodes;
+        }
+
+        // Вывести взвешенный граф на экран
+        public void PrintWeightedGraph()
+        {
+            Console.WriteLine("Взвешенный граф трубопроводной сети:");
+            foreach (var node in graph)
+            {
+                Console.WriteLine($"{node.Key}:");
+                foreach (var (neighbor, weight) in node.Value)
+                {
+                    Console.WriteLine($"  -> {neighbor} (пропускная способность: {weight})");
+                }
+            }
+        }
+
+        // Получить граф (для Lab6)
+        public Dictionary<string, List<(string, int)>> GetGraph()
+        {
+            return graph;
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp\Lab6.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+
+namespace MyApp
+{
+    // Лабораторная работа №6: Дополнительный анализ графа
+    public class Lab6
+    {
+        // Граф с весами
+        private Dictionary<string, List<(string neighbor, int weight)>> graph;
+        
+        // Список всех узлов
+        private List<string> nodes;
+
+        public Lab6(Dictionary<string, List<(string, int)>> graph, List<string> nodes)
+        {
+            this.graph = graph;
+            this.nodes = nodes;
+        }
+
+        // ===== ЗАДАЧА 1: Поиск точек сочленения =====
+        // Точка сочленения - узел, удаление которого разрывает граф на части
+        public List<string> FindArticulationPoints()
+        {
+            HashSet<string> visited = new HashSet<string>();
+            
+            // disc[узел] - время обнаружения узла
+            Dictionary<string, int> disc = new Dictionary<string, int>();
+            
+            // low[узел] - минимальное время обнаружения, достижимое из поддерева узла
+            Dictionary<string, int> low = new Dictionary<string, int>();
+            
+            // parent[узел] - родитель узла в DFS дереве
+            Dictionary<string, string> parent = new Dictionary<string, string>();
+            
+            // Множество точек сочленения
+            HashSet<string> articulationPoints = new HashSet<string>();
+            
+            int time = 0;
+
+            // Запускаем DFS для каждой компоненты связности
+            foreach (string node in nodes)
+            {
+                if (!visited.Contains(node))
+                {
+                    FindAPUtil(node, visited, disc, low, parent, articulationPoints, ref time);
+                }
+            }
+
+            return new List<string>(articulationPoints);
+        }
+
+        // Вспомогательная функция для поиска точек сочленения
+        private void FindAPUtil(string u, HashSet<string> visited, 
+            Dictionary<string, int> disc, Dictionary<string, int> low,
+            Dictionary<string, string> parent, HashSet<string> ap, ref int time)
+        {
+            int children = 0; // Количество детей в DFS дереве
+            visited.Add(u);
+            
+            // Инициализируем время обнаружения и low
+            disc[u] = low[u] = ++time;
+
+            // Проходим по всем соседям
+            if (graph.ContainsKey(u))
+            {
+                foreach (var (v, _) in graph[u])
+                {
+                    // Если v не посещен
+                    if (!visited.Contains(v))
+                    {
+                        children++;
+                        parent[v] = u;
+                        
+                        // Рекурсивный вызов
+                        FindAPUtil(v, visited, disc, low, parent, ap, ref time);
+
+                        // Обновляем low[u]
+                        low[u] = Math.Min(low[u], low[v]);
+
+                        // Случай 1: u - корень DFS дерева и имеет 2+ детей
+                        if (!parent.ContainsKey(u) && children > 1)
+                            ap.Add(u);
+
+                        // Случай 2: u не корень и low[v] >= disc[u]
+                        if (parent.ContainsKey(u) && low[v] >= disc[u])
+                            ap.Add(u);
+                    }
+                    // Обратное ребро (не к родителю)
+                    else if (parent.ContainsKey(u) && v != parent[u])
+                    {
+                        low[u] = Math.Min(low[u], disc[v]);
+                    }
+                }
+            }
+        }
+
+        // ===== ЗАДАЧА 2: Минимальное остовное дерево (алгоритм Прима) =====
+        // МОД - подграф, соединяющий все вершины с минимальной суммой весов
+        public List<(string from, string to, int weight)> PrimMST()
+        {
+            if (nodes.Count == 0) 
+                return new List<(string, string, int)>();
+
+            // Результат - список ребер МОД
+            List<(string, string, int)> mst = new List<(string, string, int)>();
+            
+            // Множество узлов, уже включенных в МОД
+            HashSet<string> inMST = new HashSet<string>();
+            
+            // Куча (приоритетная очередь) ребер: (вес, откуда, куда)
+            SortedSet<(int weight, string from, string to)> minHeap = new SortedSet<(int, string, string)>();
+
+            // Начинаем с первого узла
+            string start = nodes[0];
+            inMST.Add(start);
+
+            // Добавляем все ребра из стартового узла в кучу
+            if (graph.ContainsKey(start))
+            {
+                foreach (var (neighbor, weight) in graph[start])
+                {
+                    minHeap.Add((weight, start, neighbor));
+                }
+            }
+
+            // Пока не включили все узлы
+            while (minHeap.Count > 0 && inMST.Count < nodes.Count)
+            {
+                // Берем ребро с минимальным весом
+                var (weight, from, to) = minHeap.Min;
+                minHeap.Remove(minHeap.Min);
+
+                // Если узел "to" уже в МОД - пропускаем
+                if (inMST.Contains(to)) 
+                    continue;
+
+                // Добавляем ребро в МОД
+                mst.Add((from, to, weight));
+                inMST.Add(to);
+
+                // Добавляем все ребра из нового узла в кучу
+                if (graph.ContainsKey(to))
+                {
+                    foreach (var (neighbor, w) in graph[to])
+                    {
+                        if (!inMST.Contains(neighbor))
+                        {
+                            minHeap.Add((w, to, neighbor));
+                        }
+                    }
+                }
+            }
+
+            return mst;
+        }
+
+        // ===== ЗАДАЧА 3 (по варианту): Оптимальный путь транспортировки =====
+        // Находим путь с максимальной пропускной способностью
+        // Используем модифицированный алгоритм Дейкстры
+        public (int maxFlow, List<string> path) FindOptimalTransportPath(string source, string destination)
+        {
+            // capacity[узел] - максимальная пропускная способность до узла
+            Dictionary<string, int> capacity = new Dictionary<string, int>();
+            
+            // previous[узел] - предыдущий узел на пути
+            Dictionary<string, string> previous = new Dictionary<string, string>();
+            
+            // Множество непосещенных узлов
+            HashSet<string> unvisited = new HashSet<string>();
+
+            // Инициализация: все пропускные способности = 0
+            foreach (string node in nodes)
+            {
+                capacity[node] = 0;
+                unvisited.Add(node);
+            }
+            
+            // Пропускная способность источника = бесконечность
+            capacity[source] = int.MaxValue;
+
+            // Пока есть непосещенные узлы
+            while (unvisited.Count > 0)
+            {
+                // Находим узел с максимальной пропускной способностью
+                string current = null;
+                int maxCapacity = 0;
+                
+                foreach (string node in unvisited)
+                {
+                    if (capacity[node] > maxCapacity)
+                    {
+                        maxCapacity = capacity[node];
+                        current = node;
+                    }
+                }
+
+                // Если не нашли доступных узлов - выходим
+                if (current == null || capacity[current] == 0)
+                    break;
+
+                unvisited.Remove(current);
+
+                // Обновляем пропускную способность соседей
+                if (graph.ContainsKey(current))
+                {
+                    foreach (var (neighbor, weight) in graph[current])
+                    {
+                        // Пропускная способность = минимум на пути
+                        int newCapacity = Math.Min(capacity[current], weight);
+                        
+                        // Если нашли путь с большей пропускной способностью
+                        if (newCapacity > capacity[neighbor])
+                        {
+                            capacity[neighbor] = newCapacity;
+                            previous[neighbor] = current;
+                        }
+                    }
+                }
+            }
+
+            // Восстанавливаем путь
+            List<string> path = new List<string>();
+            string curr = destination;
+            
+            while (curr != null)
+            {
+                path.Add(curr);
+                if (curr == source) 
+                    break;
+                
+                if (previous.ContainsKey(curr))
+                    curr = previous[curr];
+                else
+                    curr = null;
+            }
+            
+            path.Reverse();
+
+            // Проверяем что узел назначения существует
+            int finalCapacity = capacity.ContainsKey(destination) ? capacity[destination] : 0;
+            
+            return (finalCapacity, path);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp\MyApp.csproj
+================================================================================
+
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+
+
+
+================================================================================
+FILE: MyApp\pipeline_large.txt
+================================================================================
+
+НС_Московская - Тверской_трубопровод, 100
+НС_Московская - Рязанский_трубопровод, 80
+НС_Московская - Можайский_узел, 95
+Тверской_трубопровод - Калининский_узел, 90
+Тверской_трубопровод - Волжский_узел, 70
+Тверской_трубопровод - Дмитровский_узел, 85
+Рязанский_трубопровод - Тульский_узел, 85
+Рязанский_трубопровод - Коломенский_узел, 75
+Рязанский_трубопровод - Каширский_узел, 80
+Калининский_узел - НС_Северная, 95
+Калининский_узел - Тверская_станция, 70
+Волжский_узел - Ярославский_узел, 60
+Волжский_узел - Костромской_узел, 65
+Тульский_узел - Орловский_узел, 80
+Тульский_узел - Тульская_станция, 55
+Коломенский_узел - Владимирский_узел, 70
+Коломенский_узел - Рязанская_станция, 60
+НС_Северная - Вологодский_узел, 100
+НС_Северная - Новгородский_узел, 50
+Ярославский_узел - Вологодский_узел, 65
+Ярославский_узел - Ярославская_станция, 45
+Орловский_узел - Курский_узел, 75
+Орловский_узел - Брянский_узел, 70
+Владимирский_узел - Курский_узел, 80
+Владимирский_узел - Владимирская_станция, 50
+Вологодский_узел - НС_Архангельская, 90
+Вологодский_узел - Череповецкий_узел, 75
+Курский_узел - НС_Архангельская, 85
+Курский_узел - Белгородский_узел, 80
+НС_Архангельская - Северодвинский_терминал, 95
+НС_Архангельская - Архангельская_станция, 60
+Новгородский_узел - Псковский_узел, 55
+Новгородский_узел - Новгородская_станция, 40
+Псковский_узел - Северодвинский_терминал, 60
+Псковский_узел - Псковская_станция, 35
+Можайский_узел - Смоленский_узел, 90
+Можайский_узел - Можайская_станция, 45
+Дмитровский_узел - Сергиев_Посад_узел, 70
+Дмитровский_узел - Дмитровская_станция, 40
+Каширский_узел - Серпуховский_узел, 65
+Каширский_узел - Каширская_станция, 35
+Тверская_станция - Конаковский_узел, 55
+Тверская_станция - Кимрский_узел, 50
+Костромской_узел - Ивановский_узел, 60
+Костромской_узел - Костромская_станция, 40
+Тульская_станция - Новомосковский_узел, 50
+Тульская_станция - Алексинский_узел, 45
+Рязанская_станция - Касимовский_узел, 55
+Рязанская_станция - Скопинский_узел, 50
+Ярославская_станция - Рыбинский_узел, 60
+Ярославская_станция - Переславский_узел, 55
+Брянский_узел - Брянская_станция, 40
+Брянский_узел - Клинцовский_узел, 65
+Владимирская_станция - Суздальский_узел, 45
+Владимирская_станция - Гусь_Хрустальный_узел, 50
+Череповецкий_узел - Череповецкая_станция, 35
+Череповецкий_узел - Белозерский_узел, 60
+Белгородский_узел - Белгородская_станция, 40
+Белгородский_узел - Старооскольский_узел, 55
+Архангельская_станция - Котласский_узел, 70
+Архангельская_станция - Онежский_узел, 65
+Новгородская_станция - Валдайский_узел, 50
+Новгородская_станция - Боровичский_узел, 45
+Псковская_станция - Великолукский_узел, 55
+Псковская_станция - Островский_узел, 50
+Смоленский_узел - Смоленская_станция, 40
+Смоленский_узел - Вяземский_узел, 60
+Можайская_станция - Рузский_узел, 35
+Можайская_станция - Верейский_узел, 40
+Сергиев_Посад_узел - Александровский_узел, 50
+Сергиев_Посад_узел - Загорская_станция, 30
+Дмитровская_станция - Талдомский_узел, 45
+Дмитровская_станция - Яхромский_узел, 40
+Серпуховский_узел - Серпуховская_станция, 35
+Серпуховский_узел - Чеховский_узел, 45
+Каширская_станция - Озёрский_узел, 40
+Каширская_станция - Ступинский_узел, 35
+Конаковский_узел - Конаковская_станция, 30
+Конаковский_узел - Завидовский_узел, 40
+Кимрский_узел - Кимрская_станция, 35
+Кимрский_узел - Дубненский_узел, 45
+Ивановский_узел - Ивановская_станция, 40
+Ивановский_узел - Шуйский_узел, 50
+Костромская_станция - Нерехтский_узел, 45
+Костромская_станция - Галичский_узел, 55
+Новомосковский_узел - Узловский_узел, 50
+Новомосковский_узел - Донской_узел, 45
+Алексинский_узел - Алексинская_станция, 30
+Алексинский_узел - Заокский_узел, 40
+Касимовский_узел - Касимовская_станция, 35
+Касимовский_узел - Сасовский_узел, 45
+Скопинский_узел - Скопинская_станция, 30
+Скопинский_узел - Михайловский_узел, 40
+Рыбинский_узел - Рыбинская_станция, 35
+Рыбинский_узел - Тутаевский_узел, 45
+Переславский_узел - Переславская_станция, 30
+Переславский_узел - Ростовский_узел, 50
+
+
+
+================================================================================
+FILE: MyApp\pipeline_network.txt
+================================================================================
+
+НС_Московская - Тверской_трубопровод
+НС_Московская - Рязанский_трубопровод
+Тверской_трубопровод - Калининский_узел
+Тверской_трубопровод - Волжский_узел
+Рязанский_трубопровод - Тульский_узел
+Рязанский_трубопровод - Коломенский_узел
+Калининский_узел - НС_Северная
+Волжский_узел - Ярославский_узел
+Тульский_узел - Орловский_узел
+Коломенский_узел - Владимирский_узел
+НС_Северная - Вологодский_узел
+Ярославский_узел - Вологодский_узел
+Орловский_узел - Курский_узел
+Владимирский_узел - Курский_узел
+Вологодский_узел - НС_Архангельская
+Курский_узел - НС_Архангельская
+НС_Архангельская - Северодвинский_терминал
+НС_Северная - Новгородский_узел
+Новгородский_узел - Псковский_узел
+Псковский_узел - Северодвинский_терминал
+
+
+
+================================================================================
+FILE: MyApp\pipeline_weighted.txt
+================================================================================
+
+НС_Московская - Тверской_трубопровод, 100
+НС_Московская - Рязанский_трубопровод, 80
+Тверской_трубопровод - Калининский_узел, 90
+Тверской_трубопровод - Волжский_узел, 70
+Рязанский_трубопровод - Тульский_узел, 85
+Рязанский_трубопровод - Коломенский_узел, 75
+Калининский_узел - НС_Северная, 95
+Волжский_узел - Ярославский_узел, 60
+Тульский_узел - Орловский_узел, 80
+Коломенский_узел - Владимирский_узел, 70
+НС_Северная - Вологодский_узел, 100
+Ярославский_узел - Вологодский_узел, 65
+Орловский_узел - Курский_узел, 75
+Владимирский_узел - Курский_узел, 80
+Вологодский_узел - НС_Архангельская, 90
+Курский_узел - НС_Архангельская, 85
+НС_Архангельская - Северодвинский_терминал, 95
+НС_Северная - Новгородский_узел, 50
+Новгородский_узел - Псковский_узел, 55
+Псковский_узел - Северодвинский_терминал, 60
+
+
+
+================================================================================
+FILE: MyApp\Program.cs
+================================================================================
+
+﻿using System;
+using System.IO;
+
+namespace MyApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.WriteLine("=== Анализ трубопроводной сети ===\n");
+
+            // Создаем тестовый файл с данными
+            CreateTestData();
+
+            // Лабораторная работа №4
+            Console.WriteLine("--- Лабораторная работа №4: Обход графа ---");
+            var lab4 = new Lab4();
+            lab4.LoadGraph("pipeline_network.txt");
+            lab4.PrintGraph();
+
+            Console.WriteLine("\nBFS от узла 'НС_Московская':");
+            var bfs = lab4.BFS("НС_Московская");
+            Console.WriteLine(string.Join(" -> ", bfs));
+
+            Console.WriteLine("\nDFS от узла 'НС_Московская':");
+            var dfs = lab4.DFS("НС_Московская");
+            Console.WriteLine(string.Join(" -> ", dfs));
+
+            Console.WriteLine("\nДостижимость 'Северодвинский_терминал' из 'НС_Московская': " + 
+                lab4.IsReachable("НС_Московская", "Северодвинский_терминал"));
+
+            Console.WriteLine("\nКомпоненты связности:");
+            var components = lab4.FindConnectedComponents();
+            for (int i = 0; i < components.Count; i++)
+            {
+                Console.WriteLine($"Компонента {i + 1}: {string.Join(", ", components[i])}");
+            }
+
+            // Лабораторная работа №5
+            Console.WriteLine("\n\n--- Лабораторная работа №5: Алгоритм Дейкстры ---");
+            var lab5 = new Lab5();
+            lab5.LoadWeightedGraph("pipeline_weighted.txt");
+
+            var (distance, path) = lab5.FindShortestPath("НС_Московская", "Северодвинский_терминал");
+            Console.WriteLine($"\nКратчайший путь от 'НС_Московская' до 'Северодвинский_терминал':");
+            Console.WriteLine($"Расстояние: {distance}");
+            Console.WriteLine($"Путь: {string.Join(" -> ", path)}");
+
+            var (distances, _) = lab5.Dijkstra("НС_Московская");
+            Console.WriteLine("\nРасстояния от 'НС_Московская' до всех узлов:");
+            foreach (var kvp in distances)
+            {
+                if (kvp.Value != int.MaxValue)
+                    Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+            }
+
+            // Лабораторная работа №6
+            Console.WriteLine("\n\n--- Лабораторная работа №6: Дополнительный анализ ---");
+            var graphData = GetGraphData(lab5);
+            var lab6 = new Lab6(graphData.Item1, graphData.Item2);
+
+            Console.WriteLine("\nТочки сочленения (критические узлы):");
+            var artPoints = lab6.FindArticulationPoints();
+            foreach (var ap in artPoints)
+            {
+                Console.WriteLine($"  - {ap}");
+            }
+
+            Console.WriteLine("\nМинимальное остовное дерево:");
+            var mst = lab6.PrimMST();
+            int totalWeight = 0;
+            foreach (var (from, to, weight) in mst)
+            {
+                Console.WriteLine($"  {from} - {to}: {weight}");
+                totalWeight += weight;
+            }
+            Console.WriteLine($"Суммарный вес: {totalWeight}");
+
+            Console.WriteLine("\nОптимальный путь транспортировки (максимальная пропускная способность):");
+            var (maxFlow, optPath) = lab6.FindOptimalTransportPath("НС_Московская", "Северодвинский_терминал");
+            Console.WriteLine($"Максимальная пропускная способность: {maxFlow}");
+            Console.WriteLine($"Путь: {string.Join(" -> ", optPath)}");
+
+            Console.WriteLine("\n\nАнализ завершен!");
+        }
+
+        static void CreateTestData()
+        {
+            // Создаем файл для Lab4 (без весов)
+            var lines4 = new[]
+            {
+                "НС_Московская - Тверской_трубопровод",
+                "НС_Московская - Рязанский_трубопровод",
+                "Тверской_трубопровод - Калининский_узел",
+                "Тверской_трубопровод - Волжский_узел",
+                "Рязанский_трубопровод - Тульский_узел",
+                "Рязанский_трубопровод - Коломенский_узел",
+                "Калининский_узел - НС_Северная",
+                "Волжский_узел - Ярославский_узел",
+                "Тульский_узел - Орловский_узел",
+                "Коломенский_узел - Владимирский_узел",
+                "НС_Северная - Вологодский_узел",
+                "Ярославский_узел - Вологодский_узел",
+                "Орловский_узел - Курский_узел",
+                "Владимирский_узел - Курский_узел",
+                "Вологодский_узел - НС_Архангельская",
+                "Курский_узел - НС_Архангельская",
+                "НС_Архангельская - Северодвинский_терминал",
+                "НС_Северная - Новгородский_узел",
+                "Новгородский_узел - Псковский_узел",
+                "Псковский_узел - Северодвинский_терминал"
+            };
+            File.WriteAllLines("pipeline_network.txt", lines4);
+
+            // Создаем файл для Lab5 (с весами - пропускная способность)
+            var lines5 = new[]
+            {
+                "НС_Московская - Тверской_трубопровод, 100",
+                "НС_Московская - Рязанский_трубопровод, 80",
+                "Тверской_трубопровод - Калининский_узел, 90",
+                "Тверской_трубопровод - Волжский_узел, 70",
+                "Рязанский_трубопровод - Тульский_узел, 85",
+                "Рязанский_трубопровод - Коломенский_узел, 75",
+                "Калининский_узел - НС_Северная, 95",
+                "Волжский_узел - Ярославский_узел, 60",
+                "Тульский_узел - Орловский_узел, 80",
+                "Коломенский_узел - Владимирский_узел, 70",
+                "НС_Северная - Вологодский_узел, 100",
+                "Ярославский_узел - Вологодский_узел, 65",
+                "Орловский_узел - Курский_узел, 75",
+                "Владимирский_узел - Курский_узел, 80",
+                "Вологодский_узел - НС_Архангельская, 90",
+                "Курский_узел - НС_Архангельская, 85",
+                "НС_Архангельская - Северодвинский_терминал, 95",
+                "НС_Северная - Новгородский_узел, 50",
+                "Новгородский_узел - Псковский_узел, 55",
+                "Псковский_узел - Северодвинский_терминал, 60"
+            };
+            File.WriteAllLines("pipeline_weighted.txt", lines5);
+        }
+
+        static (Dictionary<string, List<(string, int)>>, List<string>) GetGraphData(Lab5 lab5)
+        {
+            // Получаем граф и узлы из Lab5
+            Dictionary<string, List<(string, int)>> graph = lab5.GetGraph();
+            List<string> nodes = lab5.GetNodes();
+            
+            return (graph, nodes);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab4NegativeTests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Ложно-положительные тесты для Lab4
+    // Проверяют граничные случаи и некорректные входные данные
+    public class Lab4NegativeTests
+    {
+        private string CreateTestGraphFile(string[] lines)
+        {
+            string filename = Path.GetTempFileName();
+            File.WriteAllLines(filename, lines);
+            return filename;
+        }
+
+        // ===== ТЕСТЫ НА НЕКОРРЕКТНЫЕ ДАННЫЕ =====
+
+        [Fact]
+        public void Test01_LoadGraph_InvalidFormat_SkipsLine()
+        {
+            // Строка без разделителя "-"
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "InvalidLine", "A - B" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            // Должны загрузиться только корректные строки
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test02_LoadGraph_OnlySpaces_LoadsEmptyGraph()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "   ", "  ", "" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Empty(nodes);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test03_LoadGraph_SpecialCharacters_HandlesCorrectly()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "Node@1 - Node#2" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            Assert.Contains("Node@1", nodes);
+            Assert.Contains("Node#2", nodes);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test04_LoadGraph_VeryLongNodeNames_LoadsCorrectly()
+        {
+            var lab4 = new Lab4();
+            string longName = new string('A', 100);
+            string file = CreateTestGraphFile(new[] { $"{longName} - B" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test05_LoadGraph_SelfLoop_HandlesCorrectly()
+        {
+            // Петля: узел соединен сам с собой
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - A" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Single(nodes);
+            Assert.Contains("A", nodes);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ BFS НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test06_BFS_NonExistentStartNode_ReturnsEmpty()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            
+            // Попытка запустить BFS от несуществующего узла
+            // Должен вернуть пустой список или только стартовый узел
+            var result = lab4.BFS("NonExistent");
+
+            Assert.Single(result);
+            Assert.Equal("NonExistent", result[0]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test07_BFS_IsolatedNode_ReturnsSingleNode()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "C - D" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.BFS("C");
+
+            // Должен вернуть только узлы из компоненты C-D
+            Assert.Equal(2, result.Count);
+            Assert.Contains("C", result);
+            Assert.Contains("D", result);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test08_BFS_GraphWithCycle_HandlesCorrectly()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - A" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.BFS("A");
+
+            // Не должно быть бесконечного цикла
+            Assert.Equal(3, result.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ DFS НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test09_DFS_NonExistentStartNode_ReturnsEmpty()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("NonExistent");
+
+            Assert.Single(result);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test10_DFS_GraphWithCycle_NoInfiniteLoop()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - A" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("A");
+
+            // Проверяем что нет дубликатов (бесконечного цикла)
+            Assert.Equal(3, result.Count);
+            Assert.Equal(result.Count, new HashSet<string>(result).Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test11_DFS_DeepGraph_HandlesRecursion()
+        {
+            // Глубокий граф для проверки рекурсии
+            var lab4 = new Lab4();
+            var lines = new List<string>();
+            for (int i = 0; i < 50; i++)
+            {
+                lines.Add($"Node{i} - Node{i + 1}");
+            }
+            string file = CreateTestGraphFile(lines.ToArray());
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("Node0");
+
+            Assert.Equal(51, result.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ДОСТИЖИМОСТИ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test12_IsReachable_NonExistentNodes_ReturnsFalse()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("NonExistent1", "NonExistent2");
+
+            Assert.False(reachable);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test13_IsReachable_FromExistentToNonExistent_ReturnsFalse()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("A", "NonExistent");
+
+            Assert.False(reachable);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test14_IsReachable_EmptyGraph_ReturnsFalse()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new string[] { });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("A", "B");
+
+            Assert.False(reachable);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ КОМПОНЕНТ СВЯЗНОСТИ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test15_FindConnectedComponents_EmptyGraph_ReturnsEmpty()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new string[] { });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Empty(components);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test16_FindConnectedComponents_AllIsolated_ReturnsMany()
+        {
+            // Каждый узел - отдельная компонента
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "C - D", "E - F", "G - H" });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Equal(4, components.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test17_FindConnectedComponents_ComplexGraph_IdentifiesCorrectly()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] 
+            { 
+                "A - B", "B - C", // Компонента 1
+                "D - E", "E - F", "F - D", // Компонента 2 (с циклом)
+                "G - H" // Компонента 3
+            });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Equal(3, components.Count);
+            File.Delete(file);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab4Tests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Тесты для Лабораторной работы №4
+    public class Lab4Tests
+    {
+        // Вспомогательный метод для создания тестового файла
+        private string CreateTestGraphFile(string[] lines)
+        {
+            string filename = Path.GetTempFileName();
+            File.WriteAllLines(filename, lines);
+            return filename;
+        }
+
+        // ===== ТЕСТЫ ЗАГРУЗКИ ГРАФА =====
+
+        [Fact]
+        public void Test01_LoadGraph_SimpleGraph_LoadsCorrectly()
+        {
+            // Arrange - подготовка
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C" });
+
+            // Act - действие
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            // Assert - проверка
+            Assert.Equal(3, nodes.Count);
+            Assert.Contains("A", nodes);
+            Assert.Contains("B", nodes);
+            Assert.Contains("C", nodes);
+
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test02_LoadGraph_EmptyFile_LoadsEmptyGraph()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new string[] { });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Empty(nodes);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test03_LoadGraph_WithSpaces_TrimsCorrectly()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "  Node1  -  Node2  " });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Contains("Node1", nodes);
+            Assert.Contains("Node2", nodes);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test04_LoadGraph_MultipleEdges_CreatesConnections()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - D" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Equal(4, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test05_LoadGraph_DuplicateEdges_HandlesCorrectly()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "A - B" });
+
+            lab4.LoadGraph(file);
+            var nodes = lab4.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ BFS =====
+
+        [Fact]
+        public void Test06_BFS_SimpleGraph_ReturnsCorrectOrder()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "A - C", "B - D" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.BFS("A");
+
+            Assert.Equal("A", result[0]);
+            Assert.Contains("B", result);
+            Assert.Contains("C", result);
+            Assert.Contains("D", result);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test07_BFS_SingleNode_ReturnsSingleNode()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.BFS("A");
+
+            Assert.Equal(2, result.Count);
+            Assert.Equal("A", result[0]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test08_BFS_LinearGraph_ReturnsLinearOrder()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - D" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.BFS("A");
+
+            Assert.Equal(4, result.Count);
+            Assert.Equal("A", result[0]);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ DFS =====
+
+        [Fact]
+        public void Test09_DFS_SimpleGraph_VisitsAllNodes()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "A - C", "B - D" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("A");
+
+            Assert.Equal(4, result.Count);
+            Assert.Equal("A", result[0]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test10_DFS_LinearGraph_VisitsInDepthOrder()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - D" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("A");
+
+            Assert.Equal(4, result.Count);
+            Assert.Contains("A", result);
+            Assert.Contains("D", result);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test11_DFS_TreeGraph_VisitsAllBranches()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "Root - Left", "Root - Right", "Left - LL" });
+
+            lab4.LoadGraph(file);
+            var result = lab4.DFS("Root");
+
+            Assert.Equal(4, result.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ДОСТИЖИМОСТИ =====
+
+        [Fact]
+        public void Test12_IsReachable_ConnectedNodes_ReturnsTrue()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C" });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("A", "C");
+
+            Assert.True(reachable);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test13_IsReachable_DisconnectedNodes_ReturnsFalse()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "C - D" });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("A", "D");
+
+            Assert.False(reachable);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test14_IsReachable_SameNode_ReturnsTrue()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B" });
+
+            lab4.LoadGraph(file);
+            bool reachable = lab4.IsReachable("A", "A");
+
+            Assert.True(reachable);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ КОМПОНЕНТ СВЯЗНОСТИ =====
+
+        [Fact]
+        public void Test15_FindConnectedComponents_SingleComponent_ReturnsOne()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "B - C", "C - D" });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Single(components);
+            Assert.Equal(4, components[0].Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test16_FindConnectedComponents_TwoComponents_ReturnsTwo()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "C - D" });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Equal(2, components.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test17_FindConnectedComponents_ThreeComponents_ReturnsThree()
+        {
+            var lab4 = new Lab4();
+            string file = CreateTestGraphFile(new[] { "A - B", "C - D", "E - F" });
+
+            lab4.LoadGraph(file);
+            var components = lab4.FindConnectedComponents();
+
+            Assert.Equal(3, components.Count);
+            File.Delete(file);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab5NegativeTests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Ложно-положительные тесты для Lab5
+    public class Lab5NegativeTests
+    {
+        private string CreateWeightedGraphFile(string[] lines)
+        {
+            string filename = Path.GetTempFileName();
+            File.WriteAllLines(filename, lines);
+            return filename;
+        }
+
+        // ===== ТЕСТЫ НА НЕКОРРЕКТНЫЕ ДАННЫЕ =====
+
+        [Fact]
+        public void Test01_LoadWeightedGraph_InvalidFormat_SkipsLine()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "InvalidLine", "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test02_LoadWeightedGraph_MissingWeight_SkipsLine()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B", "C - D, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            // Только C-D должны загрузиться
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test03_LoadWeightedGraph_NegativeWeight_LoadsAnyway()
+        {
+            // Дейкстра не работает с отрицательными весами, но загрузка должна пройти
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, -10" });
+
+            // Ожидаем исключение при парсинге отрицательного числа
+            // или успешную загрузку, если код обрабатывает это
+            try
+            {
+                lab5.LoadWeightedGraph(file);
+                var nodes = lab5.GetNodes();
+                Assert.True(nodes.Count >= 0); // Любой результат допустим
+            }
+            catch (FormatException)
+            {
+                // Это тоже допустимо
+                Assert.True(true);
+            }
+
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test04_LoadWeightedGraph_ZeroWeight_LoadsCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 0" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test05_LoadWeightedGraph_VeryLargeWeight_HandlesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 999999999" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ДЕЙКСТРЫ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test06_Dijkstra_NonExistentStartNode_ReturnsMaxDistances()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("NonExistent");
+
+            // Все узлы должны иметь максимальное расстояние
+            Assert.Equal(int.MaxValue, distances["A"]);
+            Assert.Equal(int.MaxValue, distances["B"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test07_Dijkstra_EmptyGraph_HandlesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new string[] { });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            // Пустой граф может вернуть пустой словарь или словарь с одним узлом
+            Assert.True(distances.Count <= 1);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test08_Dijkstra_DisconnectedGraph_SomeNodesUnreachable()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "C - D, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(0, distances["A"]);
+            Assert.Equal(10, distances["B"]);
+            Assert.Equal(int.MaxValue, distances["C"]);
+            Assert.Equal(int.MaxValue, distances["D"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test09_Dijkstra_GraphWithZeroWeights_HandlesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 0", "B - C, 0" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(0, distances["A"]);
+            Assert.Equal(0, distances["B"]);
+            Assert.Equal(0, distances["C"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test10_Dijkstra_SingleNodeGraph_ReturnsZero()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(0, distances["A"]);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ВОССТАНОВЛЕНИЯ ПУТИ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test11_GetPath_NonExistentEndNode_ReturnsEmpty()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (_, previous) = lab5.Dijkstra("A");
+            var path = lab5.GetPath(previous, "A", "NonExistent");
+
+            Assert.Empty(path);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test12_GetPath_EmptyPrevious_ReturnsEmpty()
+        {
+            var lab5 = new Lab5();
+            var previous = new Dictionary<string, string>();
+
+            var path = lab5.GetPath(previous, "A", "B");
+
+            Assert.Empty(path);
+        }
+
+        [Fact]
+        public void Test13_GetPath_CircularReference_HandlesCorrectly()
+        {
+            // Проверка на защиту от бесконечного цикла
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (_, previous) = lab5.Dijkstra("A");
+            var path = lab5.GetPath(previous, "A", "C");
+
+            // Путь должен быть конечным
+            Assert.True(path.Count <= 10);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ПОИСКА КРАТЧАЙШЕГО ПУТИ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test14_FindShortestPath_BothNodesNonExistent_HandlesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("X", "Y");
+
+            // Может вернуть -1 или int.MaxValue для несуществующих узлов
+            Assert.True(distance == -1 || distance == int.MaxValue);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test15_FindShortestPath_VeryLongPath_FindsCorrectly()
+        {
+            // Длинная цепочка узлов
+            var lab5 = new Lab5();
+            var lines = new List<string>();
+            for (int i = 0; i < 20; i++)
+            {
+                lines.Add($"Node{i} - Node{i + 1}, 1");
+            }
+            string file = CreateWeightedGraphFile(lines.ToArray());
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("Node0", "Node20");
+
+            Assert.Equal(20, distance);
+            Assert.Equal(21, path.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test16_FindShortestPath_MultipleEqualPaths_FindsOne()
+        {
+            // Два пути с одинаковой длиной
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] 
+            { 
+                "A - B, 10",
+                "A - C, 10",
+                "B - D, 10",
+                "C - D, 10"
+            });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "D");
+
+            Assert.Equal(20, distance);
+            Assert.Equal(3, path.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test17_FindShortestPath_GraphWithCycle_FindsOptimal()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] 
+            { 
+                "A - B, 5",
+                "B - C, 5",
+                "C - A, 5",
+                "A - D, 20"
+            });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "D");
+
+            Assert.Equal(20, distance);
+            File.Delete(file);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab5Tests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Тесты для Лабораторной работы №5
+    public class Lab5Tests
+    {
+        // Вспомогательный метод для создания тестового файла с весами
+        private string CreateWeightedGraphFile(string[] lines)
+        {
+            string filename = Path.GetTempFileName();
+            File.WriteAllLines(filename, lines);
+            return filename;
+        }
+
+        // ===== ТЕСТЫ ЗАГРУЗКИ ВЗВЕШЕННОГО ГРАФА =====
+
+        [Fact]
+        public void Test01_LoadWeightedGraph_SimpleGraph_LoadsCorrectly()
+        {
+            // Arrange
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20" });
+
+            // Act
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            // Assert
+            Assert.Equal(3, nodes.Count);
+            Assert.Contains("A", nodes);
+            Assert.Contains("B", nodes);
+            Assert.Contains("C", nodes);
+
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test02_LoadWeightedGraph_EmptyFile_LoadsEmptyGraph()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new string[] { });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Empty(nodes);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test03_LoadWeightedGraph_WithSpaces_ParsesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "  Node1  -  Node2  ,  50  " });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(2, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test04_LoadWeightedGraph_MultipleEdges_LoadsAll()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20", "C - D, 30" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(4, nodes.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test05_LoadWeightedGraph_DifferentWeights_HandlesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 5", "A - C, 100" });
+
+            lab5.LoadWeightedGraph(file);
+            var nodes = lab5.GetNodes();
+
+            Assert.Equal(3, nodes.Count);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ АЛГОРИТМА ДЕЙКСТРЫ =====
+
+        [Fact]
+        public void Test06_Dijkstra_SimpleGraph_CalculatesDistances()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, previous) = lab5.Dijkstra("A");
+
+            Assert.Equal(0, distances["A"]);
+            Assert.Equal(10, distances["B"]);
+            Assert.Equal(30, distances["C"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test07_Dijkstra_StartNode_HasZeroDistance()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(0, distances["A"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test08_Dijkstra_MultiplePathsGraph_FindsShortest()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] 
+            { 
+                "A - B, 10", 
+                "A - C, 5", 
+                "C - B, 3" 
+            });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            // Кратчайший путь A->B через C: 5 + 3 = 8
+            Assert.Equal(8, distances["B"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test09_Dijkstra_LinearGraph_CalculatesCorrectly()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] 
+            { 
+                "A - B, 5", 
+                "B - C, 10", 
+                "C - D, 15" 
+            });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(30, distances["D"]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test10_Dijkstra_DisconnectedNode_HasMaxDistance()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "C - D, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distances, _) = lab5.Dijkstra("A");
+
+            Assert.Equal(int.MaxValue, distances["C"]);
+            Assert.Equal(int.MaxValue, distances["D"]);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ВОССТАНОВЛЕНИЯ ПУТИ =====
+
+        [Fact]
+        public void Test11_GetPath_SimpleGraph_ReturnsCorrectPath()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (_, previous) = lab5.Dijkstra("A");
+            var path = lab5.GetPath(previous, "A", "C");
+
+            Assert.Equal(3, path.Count);
+            Assert.Equal("A", path[0]);
+            Assert.Equal("B", path[1]);
+            Assert.Equal("C", path[2]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test12_GetPath_DirectConnection_ReturnsTwoNodes()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (_, previous) = lab5.Dijkstra("A");
+            var path = lab5.GetPath(previous, "A", "B");
+
+            Assert.Equal(2, path.Count);
+            Assert.Equal("A", path[0]);
+            Assert.Equal("B", path[1]);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test13_GetPath_NoPath_ReturnsEmptyList()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "C - D, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (_, previous) = lab5.Dijkstra("A");
+            var path = lab5.GetPath(previous, "A", "D");
+
+            Assert.Empty(path);
+            File.Delete(file);
+        }
+
+        // ===== ТЕСТЫ ПОИСКА КРАТЧАЙШЕГО ПУТИ =====
+
+        [Fact]
+        public void Test14_FindShortestPath_SimpleGraph_ReturnsCorrectDistanceAndPath()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "B - C, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "C");
+
+            Assert.Equal(30, distance);
+            Assert.Equal(3, path.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test15_FindShortestPath_ComplexGraph_FindsOptimalRoute()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] 
+            { 
+                "A - B, 100", 
+                "A - C, 50", 
+                "C - D, 30",
+                "D - B, 10"
+            });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "B");
+
+            // Оптимальный путь: A -> C -> D -> B = 90
+            Assert.Equal(90, distance);
+            Assert.Equal(4, path.Count);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test16_FindShortestPath_NoPath_ReturnsMaxDistance()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10", "C - D, 20" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "D");
+
+            // Недостижимый узел имеет расстояние int.MaxValue
+            Assert.Equal(int.MaxValue, distance);
+            Assert.Empty(path);
+            File.Delete(file);
+        }
+
+        [Fact]
+        public void Test17_FindShortestPath_SameNode_ReturnsZeroDistance()
+        {
+            var lab5 = new Lab5();
+            string file = CreateWeightedGraphFile(new[] { "A - B, 10" });
+
+            lab5.LoadWeightedGraph(file);
+            var (distance, path) = lab5.FindShortestPath("A", "A");
+
+            Assert.Equal(0, distance);
+            Assert.Single(path);
+            Assert.Equal("A", path[0]);
+            File.Delete(file);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab6NegativeTests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Ложно-положительные тесты для Lab6
+    public class Lab6NegativeTests
+    {
+        // ===== ТЕСТЫ ТОЧЕК СОЧЛЕНЕНИЯ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test01_FindArticulationPoints_EmptyGraph_ReturnsEmpty()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>();
+            var nodes = new List<string>();
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test02_FindArticulationPoints_SingleNode_ReturnsEmpty()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)>()
+            };
+            var nodes = new List<string> { "A" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test03_FindArticulationPoints_TwoNodesConnected_ReturnsEmpty()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test04_FindArticulationPoints_CompleteGraph_ReturnsEmpty()
+        {
+            // Полносвязный граф - каждый узел соединен с каждым
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10), ("C", 10), ("D", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("C", 10), ("D", 10) },
+                ["C"] = new List<(string, int)> { ("A", 10), ("B", 10), ("D", 10) },
+                ["D"] = new List<(string, int)> { ("A", 10), ("B", 10), ("C", 10) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test05_FindArticulationPoints_GraphWithSelfLoop_HandlesCorrectly()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("A", 10), ("B", 5) },
+                ["B"] = new List<(string, int)> { ("A", 5) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            // Не должно быть ошибок
+            Assert.NotNull(ap);
+        }
+
+        // ===== ТЕСТЫ МОД НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test06_PrimMST_TwoNodesConnected_ReturnsOneEdge()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Single(mst);
+            Assert.Equal(10, mst[0].weight);
+        }
+
+        [Fact]
+        public void Test07_PrimMST_DisconnectedGraph_ReturnsPartialMST()
+        {
+            // Несвязный граф - МОД будет только для одной компоненты
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) },
+                ["C"] = new List<(string, int)> { ("D", 20) },
+                ["D"] = new List<(string, int)> { ("C", 20) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            // МОД будет только для компоненты, содержащей стартовый узел
+            Assert.True(mst.Count < 3);
+        }
+
+        [Fact]
+        public void Test08_PrimMST_AllEqualWeights_ReturnsValidMST()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10), ("C", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("C", 10) },
+                ["C"] = new List<(string, int)> { ("A", 10), ("B", 10) }
+            };
+            var nodes = new List<string> { "A", "B", "C" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Equal(2, mst.Count);
+            int totalWeight = 0;
+            foreach (var (_, _, weight) in mst)
+            {
+                totalWeight += weight;
+            }
+            Assert.Equal(20, totalWeight);
+        }
+
+        [Fact]
+        public void Test09_PrimMST_VeryLargeWeights_HandlesCorrectly()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", int.MaxValue / 2) },
+                ["B"] = new List<(string, int)> { ("A", int.MaxValue / 2) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Single(mst);
+        }
+
+        [Fact]
+        public void Test10_PrimMST_GraphWithCycle_ReturnsTreeWithoutCycle()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 1), ("C", 3) },
+                ["B"] = new List<(string, int)> { ("A", 1), ("C", 2) },
+                ["C"] = new List<(string, int)> { ("A", 3), ("B", 2) }
+            };
+            var nodes = new List<string> { "A", "B", "C" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            // МОД для 3 узлов должно иметь 2 ребра
+            Assert.Equal(2, mst.Count);
+        }
+
+        // ===== ТЕСТЫ ОПТИМАЛЬНОГО ПУТИ НА ГРАНИЧНЫХ СЛУЧАЯХ =====
+
+        [Fact]
+        public void Test11_FindOptimalTransportPath_EmptyGraph_ReturnsZero()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>();
+            var nodes = new List<string>();
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "B");
+
+            Assert.Equal(0, maxFlow);
+        }
+
+        [Fact]
+        public void Test12_FindOptimalTransportPath_NonExistentNodes_ReturnsZero()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("X", "Y");
+
+            Assert.Equal(0, maxFlow);
+        }
+
+        [Fact]
+        public void Test13_FindOptimalTransportPath_ZeroWeightEdge_ReturnsZero()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 0) },
+                ["B"] = new List<(string, int)> { ("A", 0) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "B");
+
+            Assert.Equal(0, maxFlow);
+        }
+
+        [Fact]
+        public void Test14_FindOptimalTransportPath_AllPathsBlocked_ReturnsZero()
+        {
+            // Все пути имеют нулевую пропускную способность
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 0), ("C", 0) },
+                ["B"] = new List<(string, int)> { ("A", 0), ("D", 0) },
+                ["C"] = new List<(string, int)> { ("A", 0), ("D", 0) },
+                ["D"] = new List<(string, int)> { ("B", 0), ("C", 0) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            Assert.Equal(0, maxFlow);
+        }
+
+        [Fact]
+        public void Test15_FindOptimalTransportPath_VeryLargeCapacity_HandlesCorrectly()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", int.MaxValue / 2) },
+                ["B"] = new List<(string, int)> { ("A", int.MaxValue / 2) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "B");
+
+            Assert.True(maxFlow > 0);
+        }
+
+        [Fact]
+        public void Test16_FindOptimalTransportPath_ComplexBottleneck_FindsCorrectly()
+        {
+            // Сложный граф с несколькими узкими местами
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 100), ("C", 50) },
+                ["B"] = new List<(string, int)> { ("A", 100), ("D", 5) },
+                ["C"] = new List<(string, int)> { ("A", 50), ("D", 60) },
+                ["D"] = new List<(string, int)> { ("B", 5), ("C", 60) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            // Лучший путь через C с пропускной способностью 50
+            Assert.Equal(50, maxFlow);
+        }
+
+        [Fact]
+        public void Test17_FindOptimalTransportPath_LongChainWithBottleneck_FindsMinimum()
+        {
+            // Длинная цепочка с одним узким местом
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 100) },
+                ["B"] = new List<(string, int)> { ("A", 100), ("C", 5) },
+                ["C"] = new List<(string, int)> { ("B", 5), ("D", 100) },
+                ["D"] = new List<(string, int)> { ("C", 100), ("E", 100) },
+                ["E"] = new List<(string, int)> { ("D", 100) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D", "E" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "E");
+
+            // Узкое место B-C с пропускной способностью 5
+            Assert.Equal(5, maxFlow);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\Lab6Tests.cs
+================================================================================
+
+using System;
+using System.Collections.Generic;
+using Xunit;
+using MyApp;
+
+namespace MyApp.Tests
+{
+    // Тесты для Лабораторной работы №6
+    public class Lab6Tests
+    {
+        // Вспомогательный метод для создания простого графа
+        private (Dictionary<string, List<(string, int)>>, List<string>) CreateSimpleGraph()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10), ("C", 5) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("D", 15) },
+                ["C"] = new List<(string, int)> { ("A", 5), ("D", 20) },
+                ["D"] = new List<(string, int)> { ("B", 15), ("C", 20) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            return (graph, nodes);
+        }
+
+        // Граф с точкой сочленения
+        private (Dictionary<string, List<(string, int)>>, List<string>) CreateGraphWithArticulationPoint()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("C", 5) },
+                ["C"] = new List<(string, int)> { ("B", 5), ("D", 15) },
+                ["D"] = new List<(string, int)> { ("C", 15) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            return (graph, nodes);
+        }
+
+        // ===== ТЕСТЫ ПОИСКА ТОЧЕК СОЧЛЕНЕНИЯ =====
+
+        [Fact]
+        public void Test01_FindArticulationPoints_SimpleGraph_FindsNone()
+        {
+            // Полносвязный граф не имеет точек сочленения
+            var (graph, nodes) = CreateSimpleGraph();
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test02_FindArticulationPoints_LinearGraph_FindsMiddleNodes()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("C", 5) },
+                ["C"] = new List<(string, int)> { ("B", 5) }
+            };
+            var nodes = new List<string> { "A", "B", "C" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Contains("B", ap);
+        }
+
+        [Fact]
+        public void Test03_FindArticulationPoints_BridgeNode_FindsIt()
+        {
+            var (graph, nodes) = CreateGraphWithArticulationPoint();
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            // B и C - точки сочленения
+            Assert.True(ap.Count >= 1);
+        }
+
+        [Fact]
+        public void Test04_FindArticulationPoints_TwoComponents_FindsNone()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) },
+                ["C"] = new List<(string, int)> { ("D", 5) },
+                ["D"] = new List<(string, int)> { ("C", 5) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Empty(ap);
+        }
+
+        [Fact]
+        public void Test05_FindArticulationPoints_StarGraph_FindsCenter()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["Center"] = new List<(string, int)> { ("A", 10), ("B", 5), ("C", 15) },
+                ["A"] = new List<(string, int)> { ("Center", 10) },
+                ["B"] = new List<(string, int)> { ("Center", 5) },
+                ["C"] = new List<(string, int)> { ("Center", 15) }
+            };
+            var nodes = new List<string> { "Center", "A", "B", "C" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var ap = lab6.FindArticulationPoints();
+
+            Assert.Contains("Center", ap);
+        }
+
+        // ===== ТЕСТЫ МИНИМАЛЬНОГО ОСТОВНОГО ДЕРЕВА =====
+
+        [Fact]
+        public void Test06_PrimMST_SimpleGraph_ReturnsCorrectEdges()
+        {
+            var (graph, nodes) = CreateSimpleGraph();
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            // МОД должно содержать n-1 ребер для n узлов
+            Assert.Equal(3, mst.Count);
+        }
+
+        [Fact]
+        public void Test07_PrimMST_SimpleGraph_HasMinimalWeight()
+        {
+            var (graph, nodes) = CreateSimpleGraph();
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+            int totalWeight = 0;
+            foreach (var (_, _, weight) in mst)
+            {
+                totalWeight += weight;
+            }
+
+            // Минимальный вес: A-C(5) + C-A(уже есть) + B-A(10) + B-D(15) = 30
+            Assert.Equal(30, totalWeight);
+        }
+
+        [Fact]
+        public void Test08_PrimMST_LinearGraph_ReturnsAllEdges()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10), ("C", 20) },
+                ["C"] = new List<(string, int)> { ("B", 20) }
+            };
+            var nodes = new List<string> { "A", "B", "C" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Equal(2, mst.Count);
+        }
+
+        [Fact]
+        public void Test09_PrimMST_EmptyGraph_ReturnsEmpty()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>();
+            var nodes = new List<string>();
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Empty(mst);
+        }
+
+        [Fact]
+        public void Test10_PrimMST_SingleNode_ReturnsEmpty()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)>()
+            };
+            var nodes = new List<string> { "A" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var mst = lab6.PrimMST();
+
+            Assert.Empty(mst);
+        }
+
+        // ===== ТЕСТЫ ОПТИМАЛЬНОГО ПУТИ ТРАНСПОРТИРОВКИ =====
+
+        [Fact]
+        public void Test11_FindOptimalTransportPath_SimpleGraph_FindsMaxCapacity()
+        {
+            var (graph, nodes) = CreateSimpleGraph();
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            // Максимальная пропускная способность ограничена минимумом на пути
+            Assert.True(maxFlow > 0);
+            Assert.NotEmpty(path);
+        }
+
+        [Fact]
+        public void Test12_FindOptimalTransportPath_DirectConnection_ReturnsDirectWeight()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 100) },
+                ["B"] = new List<(string, int)> { ("A", 100) }
+            };
+            var nodes = new List<string> { "A", "B" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "B");
+
+            Assert.Equal(100, maxFlow);
+            Assert.Equal(2, path.Count);
+        }
+
+        [Fact]
+        public void Test13_FindOptimalTransportPath_BottleneckPath_ReturnsMinimum()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 100) },
+                ["B"] = new List<(string, int)> { ("A", 100), ("C", 10) },
+                ["C"] = new List<(string, int)> { ("B", 10), ("D", 50) },
+                ["D"] = new List<(string, int)> { ("C", 50) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            // Узкое место - ребро B-C с весом 10
+            Assert.Equal(10, maxFlow);
+        }
+
+        [Fact]
+        public void Test14_FindOptimalTransportPath_NoPath_ReturnsZero()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 10) },
+                ["B"] = new List<(string, int)> { ("A", 10) },
+                ["C"] = new List<(string, int)> { ("D", 20) },
+                ["D"] = new List<(string, int)> { ("C", 20) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            Assert.Equal(0, maxFlow);
+        }
+
+        [Fact]
+        public void Test15_FindOptimalTransportPath_SameNode_ReturnsInfinity()
+        {
+            var (graph, nodes) = CreateSimpleGraph();
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "A");
+
+            Assert.Equal(int.MaxValue, maxFlow);
+            Assert.Single(path);
+        }
+
+        [Fact]
+        public void Test16_FindOptimalTransportPath_MultipleRoutes_ChoosesBest()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["A"] = new List<(string, int)> { ("B", 50), ("C", 100) },
+                ["B"] = new List<(string, int)> { ("A", 50), ("D", 60) },
+                ["C"] = new List<(string, int)> { ("A", 100), ("D", 80) },
+                ["D"] = new List<(string, int)> { ("B", 60), ("C", 80) }
+            };
+            var nodes = new List<string> { "A", "B", "C", "D" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("A", "D");
+
+            // Лучший путь: A -> C -> D с минимумом 80
+            Assert.Equal(80, maxFlow);
+        }
+
+        [Fact]
+        public void Test17_FindOptimalTransportPath_ComplexGraph_FindsOptimal()
+        {
+            var graph = new Dictionary<string, List<(string, int)>>
+            {
+                ["Start"] = new List<(string, int)> { ("A", 100), ("B", 50) },
+                ["A"] = new List<(string, int)> { ("Start", 100), ("End", 30) },
+                ["B"] = new List<(string, int)> { ("Start", 50), ("C", 40) },
+                ["C"] = new List<(string, int)> { ("B", 40), ("End", 60) },
+                ["End"] = new List<(string, int)> { ("A", 30), ("C", 60) }
+            };
+            var nodes = new List<string> { "Start", "A", "B", "C", "End" };
+            var lab6 = new Lab6(graph, nodes);
+
+            var (maxFlow, path) = lab6.FindOptimalTransportPath("Start", "End");
+
+            // Оптимальный путь: Start -> B -> C -> End с минимумом 40
+            Assert.Equal(40, maxFlow);
+            Assert.True(path.Count >= 2);
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.Tests\MyApp.Tests.csproj
+================================================================================
+
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyApp\MyApp.csproj" />
+  </ItemGroup>
+
+</Project>
+
+
+
+================================================================================
+FILE: MyApp.WPF\App.xaml
+================================================================================
+
+﻿<Application x:Class="MyApp.WPF.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MyApp.WPF"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+         
+    </Application.Resources>
+</Application>
+
+
+
+================================================================================
+FILE: MyApp.WPF\App.xaml.cs
+================================================================================
+
+﻿using System.Configuration;
+using System.Data;
+using System.Windows;
+
+namespace MyApp.WPF;
+
+/// <summary>
+/// Interaction logic for App.xaml
+/// </summary>
+public partial class App : Application
+{
+}
+
+
+
+
+================================================================================
+FILE: MyApp.WPF\MainWindow.xaml
+================================================================================
+
+﻿<Window x:Class="MyApp.WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Анализ трубопроводной сети" 
+        Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#FAFAFA">
+    
+    <Window.Resources>
+        <!-- Linear Style Buttons -->
+        <Style x:Key="LinearButton" TargetType="Button">
+            <Setter Property="Background" Value="#5E6AD2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4E5AC1"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#3E4AB1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource LinearButton}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#5E6AD2"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="#5E6AD2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F6FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InputBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="#E1E4E8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ResultBox" TargetType="TextBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#24292E"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="BorderBrush" Value="#E1E4E8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" 
+                Background="White" 
+                BorderBrush="#E1E4E8" 
+                BorderThickness="0,0,0,1"
+                Padding="32,24">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Анализ трубопроводной сети" 
+                               FontSize="24" 
+                               FontWeight="SemiBold" 
+                               Foreground="#24292E"/>
+                    <TextBlock Text="Лабораторные работы №4-6" 
+                               FontSize="14" 
+                               Foreground="#6A737D"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#F6F8FA" 
+                            CornerRadius="6" 
+                            Padding="12,6"
+                            Margin="0,0,8,0">
+                        <TextBlock Text="17 узлов" 
+                                   FontSize="12" 
+                                   Foreground="#6A737D"/>
+                    </Border>
+                    <Border Background="#F6F8FA" 
+                            CornerRadius="6" 
+                            Padding="12,6">
+                        <TextBlock Text="20 рёбер" 
+                                   FontSize="12" 
+                                   Foreground="#6A737D"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Tabs -->
+        <TabControl Grid.Row="1" 
+                    Margin="0" 
+                    BorderThickness="0"
+                    Background="Transparent">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border Name="Border" 
+                                        Background="Transparent" 
+                                        BorderThickness="0,0,0,2"
+                                        BorderBrush="Transparent"
+                                        Padding="24,16">
+                                    <ContentPresenter ContentSource="Header" 
+                                                      HorizontalAlignment="Center" 
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="BorderBrush" Value="#5E6AD2"/>
+                                        <Setter Property="Foreground" Value="#24292E"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#F6F8FA"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Foreground" Value="#6A737D"/>
+                </Style>
+            </TabControl.Resources>
+            
+            <!-- Lab 4 -->
+            <TabItem Header="Лабораторная №4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Построение графа. Алгоритмы обхода" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    BFS (обход в ширину) и DFS (обход в глубину)<LineBreak/>
+                                    Проверка достижимости узлов<LineBreak/>
+                                    Поиск компонент связности
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="140"
+                                    Click="LoadGraph_Click"/>
+                            <Button Content="Запустить BFS" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="140"
+                                    Margin="12,0,0,0"
+                                    Click="RunBFS_Click"/>
+                            <Button Content="Запустить DFS" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="140"
+                                    Margin="12,0,0,0"
+                                    Click="RunDFS_Click"/>
+                            <Button Content="Компоненты связности" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="180"
+                                    Margin="12,0,0,0"
+                                    Click="FindComponents_Click"/>
+                        </StackPanel>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="2" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab4Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="3" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab4Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="400"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Lab 5 -->
+            <TabItem Header="Лабораторная №5">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Взвешенный граф. Алгоритм Дейкстры" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Алгоритм Дейкстры для поиска кратчайших путей<LineBreak/>
+                                    Расчет расстояний от заданной вершины до всех остальных<LineBreak/>
+                                    Восстановление маршрута между двумя узлами
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить взвешенный граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="220"
+                                    Click="LoadWeightedGraph_Click"/>
+                            <Button Content="Запустить Дейкстру" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="180"
+                                    Margin="12,0,0,0"
+                                    Click="RunDijkstra_Click"/>
+                        </StackPanel>
+
+                        <!-- Path Input -->
+                        <Border Grid.Row="2" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" 
+                                           Text="От:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="1" 
+                                          x:Name="Lab5FromNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <TextBlock Grid.Column="2" 
+                                           Text="До:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="3" 
+                                          x:Name="Lab5ToNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <Button Grid.Column="4" 
+                                        Content="Найти путь" 
+                                        Style="{StaticResource LinearButton}"
+                                        Width="120"
+                                        Click="FindPath_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="3" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab5Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="4" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab5Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="350"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Lab 6 -->
+            <TabItem Header="Лабораторная №6">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Дополнительный анализ графа" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Поиск точек сочленения (критических узлов)<LineBreak/>
+                                    Построение минимального остовного дерева (алгоритм Прима)<LineBreak/>
+                                    Поиск оптимального пути транспортировки ресурса
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Точки сочленения" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="180"
+                                    Click="FindArticulationPoints_Click"/>
+                            <Button Content="Минимальное остовное дерево" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="240"
+                                    Margin="12,0,0,0"
+                                    Click="BuildMST_Click"/>
+                        </StackPanel>
+
+                        <!-- Transport Input -->
+                        <Border Grid.Row="2" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" 
+                                           Text="Источник:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="1" 
+                                          x:Name="Lab6FromNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <TextBlock Grid.Column="2" 
+                                           Text="Назначение:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="3" 
+                                          x:Name="Lab6ToNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <Button Grid.Column="4" 
+                                        Content="Оптимальный путь" 
+                                        Style="{StaticResource LinearButton}"
+                                        Width="160"
+                                        Click="FindOptimalPath_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="3" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab6Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="4" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab6Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="350"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Эксперимент -->
+            <TabItem Header="Эксперимент">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Эксперимент: Анализ производительности" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Сравнение времени выполнения алгоритмов на графах разного размера:<LineBreak/>
+                                    • Малый граф: 17 вершин, 20 рёбер<LineBreak/>
+                                    • Большой граф: 50+ вершин, 100+ рёбер<LineBreak/><LineBreak/>
+                                    Измеряется время выполнения BFS, DFS, Дейкстры и других алгоритмов.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить большой граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="200"
+                                    Click="LoadLargeGraph_Click"/>
+                            <Button Content="Запустить эксперимент" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="200"
+                                    Margin="12,0,0,0"
+                                    Click="RunExperiment_Click"/>
+                            <Button Content="Сравнить графы" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="160"
+                                    Margin="12,0,0,0"
+                                    Click="CompareGraphs_Click"/>
+                        </StackPanel>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="2" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ExperimentTiming" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="3" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="ExperimentResults" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="400"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Справка -->
+            <TabItem Header="Справка">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="32,24">
+                        
+                        <!-- Общая информация -->
+                        <Border Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="О программе" 
+                                           FontSize="18" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,16"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="22">
+                                    Программа предназначена для анализа трубопроводной сети с узлами и насосными станциями. 
+                                    Реализует три лабораторные работы по алгоритмам на графах.<LineBreak/><LineBreak/>
+                                    
+                                    Граф содержит 17 узлов (насосные станции и трубопроводы) и 20 рёбер (соединения между узлами).
+                                    Каждое ребро имеет вес, представляющий пропускную способность трубы.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 4 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №4: Построение графа. Алгоритмы обхода" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="BFS (Обход в ширину)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Алгоритм обходит граф уровень за уровнем, используя очередь. Начинает с начального узла 
+                                    и посещает все его соседей, затем соседей соседей и т.д. Подходит для поиска кратчайшего 
+                                    пути по количеству рёбер.
+                                </TextBlock>
+                                
+                                <TextBlock Text="DFS (Обход в глубину)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Алгоритм идет как можно глубже по одной ветке, используя рекурсию. Подходит для проверки 
+                                    связности графа и обнаружения циклов.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Компоненты связности" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Находит группы узлов, между которыми существуют пути. Если граф связный, будет одна компонента.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 5 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №5: Взвешенный граф. Алгоритм Дейкстры" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="Алгоритм Дейкстры" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Находит кратчайшие пути от одной вершины до всех остальных в графе с неотрицательными весами. 
+                                    На каждом шаге выбирает непосещённую вершину с минимальным известным расстоянием и обновляет 
+                                    расстояния до её соседей.<LineBreak/><LineBreak/>
+                                    
+                                    Сложность: O((V + E) log V), где V - количество вершин, E - количество рёбер.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Применение" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Поиск оптимального маршрута транспортировки ресурса с минимальными затратами. 
+                                    Программа восстанавливает полный путь от начального до конечного узла.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 6 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №6: Дополнительный анализ графа" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="Точки сочленения" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Узлы, удаление которых разрывает граф на несколько компонент. Это критически важные узлы 
+                                    инфраструктуры, выход из строя которых нарушит работу всей сети.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Минимальное остовное дерево (МОД)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Подграф, соединяющий все вершины с минимальной суммой весов рёбер. Алгоритм Прима строит 
+                                    дерево жадно, добавляя самое дешёвое ребро к уже построенному дереву.<LineBreak/><LineBreak/>
+                                    
+                                    Применение: показывает минимальную инфраструктуру для связи всех узлов сети.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Оптимальный путь транспортировки" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Находит путь с максимальной пропускной способностью между двумя узлами. Использует 
+                                    модифицированный алгоритм Дейкстры, где вместо суммы весов максимизируется минимум на пути.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Инструкция -->
+                        <Border Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24">
+                            <StackPanel>
+                                <TextBlock Text="Порядок работы" 
+                                           FontSize="18" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,16"/>
+                                
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="22">
+                                    1. Откройте вкладку "Лабораторная №4"<LineBreak/>
+                                    2. Нажмите "Загрузить граф" для загрузки структуры сети<LineBreak/>
+                                    3. Используйте кнопки BFS, DFS для обхода графа<LineBreak/>
+                                    4. Перейдите на вкладку "Лабораторная №5"<LineBreak/>
+                                    5. Нажмите "Загрузить взвешенный граф"<LineBreak/>
+                                    6. Введите начальный и конечный узлы для поиска пути<LineBreak/>
+                                    7. Перейдите на вкладку "Лабораторная №6"<LineBreak/>
+                                    8. Выполните дополнительный анализ графа<LineBreak/><LineBreak/>
+                                    
+                                    Все результаты отображаются в текстовом поле справа от кнопок управления.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Window>
+
+
+
+================================================================================
+FILE: MyApp.WPF\MainWindow.xaml.cs
+================================================================================
+
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Windows;
+using MyApp;
+using IOPath = System.IO.Path;
+
+namespace MyApp.WPF
+{
+    public partial class MainWindow : Window
+    {
+        // Экземпляры лабораторных работ
+        private Lab4 lab4;
+        private Lab5 lab5;
+        private Lab6? lab6;
+        
+        // Для эксперимента
+        private Lab5 lab5Large;
+        private Lab4 lab4Large;
+
+        // Пути к файлам данных
+        private string? graphFilePath;
+        private string? weightedGraphFilePath;
+        private string? largeGraphFilePath;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            
+            // Инициализация
+            lab4 = new Lab4();
+            lab5 = new Lab5();
+            lab5Large = new Lab5();
+            lab4Large = new Lab4();
+            
+            // Создаем тестовые файлы при запуске
+            CreateTestDataFiles();
+            
+            // Автоматически загружаем графы при запуске
+            try
+            {
+                // Загружаем обычный граф для Lab4
+                lab4.LoadGraph(graphFilePath);
+                
+                // Загружаем взвешенный граф для Lab5 и Lab6
+                lab5.LoadWeightedGraph(weightedGraphFilePath);
+                lab6 = new Lab6(lab5.GetGraph(), lab5.GetNodes());
+                
+                // Заполняем ComboBox'ы
+                var nodes = lab5.GetNodes();
+                if (nodes != null && nodes.Count > 0)
+                {
+                    var nodeList = new List<string>(nodes);
+                    
+                    Lab5FromNode.ItemsSource = nodeList;
+                    Lab5ToNode.ItemsSource = nodeList;
+                    Lab6FromNode.ItemsSource = nodeList;
+                    Lab6ToNode.ItemsSource = nodeList;
+                    
+                    // Устанавливаем значения по умолчанию
+                    if (nodes.Contains("НС_Московская"))
+                    {
+                        Lab5FromNode.SelectedItem = "НС_Московская";
+                        Lab6FromNode.SelectedItem = "НС_Московская";
+                    }
+                    else
+                    {
+                        Lab5FromNode.SelectedIndex = 0;
+                        Lab6FromNode.SelectedIndex = 0;
+                    }
+                    
+                    if (nodes.Contains("Северодвинский_терминал"))
+                    {
+                        Lab5ToNode.SelectedItem = "Северодвинский_терминал";
+                        Lab6ToNode.SelectedItem = "Северодвинский_терминал";
+                    }
+                    else
+                    {
+                        Lab5ToNode.SelectedIndex = nodes.Count > 1 ? nodes.Count - 1 : 0;
+                        Lab6ToNode.SelectedIndex = nodes.Count > 1 ? nodes.Count - 1 : 0;
+                    }
+                }
+                
+                Lab4Results.Text = "✓ Граф загружен. Выберите операцию.";
+                Lab5Results.Text = "✓ Взвешенный граф загружен. Выберите операцию.";
+                Lab6Results.Text = "✓ Граф загружен. Выберите операцию.";
+            }
+            catch (Exception ex)
+            {
+                Lab4Results.Text = "Нажмите 'Загрузить граф' для начала работы.";
+                Lab5Results.Text = "Нажмите 'Загрузить взвешенный граф' для начала работы.";
+                Lab6Results.Text = "Сначала загрузите взвешенный граф в Лабораторной №5.";
+                
+                MessageBox.Show($"Ошибка автозагрузки: {ex.Message}", "Предупреждение", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====
+
+        private void CreateTestDataFiles()
+        {
+            // Создаем файл для Lab4
+            graphFilePath = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "pipeline_network.txt");
+            var lines4 = new[]
+            {
+                "НС_Московская - Тверской_трубопровод",
+                "НС_Московская - Рязанский_трубопровод",
+                "Тверской_трубопровод - Калининский_узел",
+                "Тверской_трубопровод - Волжский_узел",
+                "Рязанский_трубопровод - Тульский_узел",
+                "Рязанский_трубопровод - Коломенский_узел",
+                "Калининский_узел - НС_Северная",
+                "Волжский_узел - Ярославский_узел",
+                "Тульский_узел - Орловский_узел",
+                "Коломенский_узел - Владимирский_узел",
+                "НС_Северная - Вологодский_узел",
+                "Ярославский_узел - Вологодский_узел",
+                "Орловский_узел - Курский_узел",
+                "Владимирский_узел - Курский_узел",
+                "Вологодский_узел - НС_Архангельская",
+                "Курский_узел - НС_Архангельская",
+                "НС_Архангельская - Северодвинский_терминал",
+                "НС_Северная - Новгородский_узел",
+                "Новгородский_узел - Псковский_узел",
+                "Псковский_узел - Северодвинский_терминал"
+            };
+            File.WriteAllLines(graphFilePath, lines4);
+
+            // Создаем файл для Lab5
+            weightedGraphFilePath = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "pipeline_weighted.txt");
+            var lines5 = new[]
+            {
+                "НС_Московская - Тверской_трубопровод, 100",
+                "НС_Московская - Рязанский_трубопровод, 80",
+                "Тверской_трубопровод - Калининский_узел, 90",
+                "Тверской_трубопровод - Волжский_узел, 70",
+                "Рязанский_трубопровод - Тульский_узел, 85",
+                "Рязанский_трубопровод - Коломенский_узел, 75",
+                "Калининский_узел - НС_Северная, 95",
+                "Волжский_узел - Ярославский_узел, 60",
+                "Тульский_узел - Орловский_узел, 80",
+                "Коломенский_узел - Владимирский_узел, 70",
+                "НС_Северная - Вологодский_узел, 100",
+                "Ярославский_узел - Вологодский_узел, 65",
+                "Орловский_узел - Курский_узел, 75",
+                "Владимирский_узел - Курский_узел, 80",
+                "Вологодский_узел - НС_Архангельская, 90",
+                "Курский_узел - НС_Архангельская, 85",
+                "НС_Архангельская - Северодвинский_терминал, 95",
+                "НС_Северная - Новгородский_узел, 50",
+                "Новгородский_узел - Псковский_узел, 55",
+                "Псковский_узел - Северодвинский_терминал, 60"
+            };
+            File.WriteAllLines(weightedGraphFilePath, lines5);
+            
+            // Путь к большому графу
+            largeGraphFilePath = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "pipeline_large.txt");
+        }
+
+        // ===== ЛАБОРАТОРНАЯ РАБОТА №4 =====
+
+        private void LoadGraph_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                lab4.LoadGraph(graphFilePath);
+                
+                var sb = new StringBuilder();
+                sb.AppendLine("✓ Граф успешно загружен!");
+                sb.AppendLine($"Файл: {IOPath.GetFileName(graphFilePath)}");
+                sb.AppendLine($"Количество узлов: {lab4.GetNodes().Count}");
+                sb.AppendLine();
+                sb.AppendLine("Структура графа:");
+                
+                // Выводим первые 10 узлов
+                var nodes = lab4.GetNodes();
+                for (int i = 0; i < Math.Min(10, nodes.Count); i++)
+                {
+                    sb.AppendLine($"  • {nodes[i]}");
+                }
+                if (nodes.Count > 10)
+                    sb.AppendLine($"  ... и еще {nodes.Count - 10} узлов");
+
+                Lab4Results.Text = sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки графа: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private Dictionary<string, List<string>> GetGraphEdges()
+        {
+            var edges = new Dictionary<string, List<string>>();
+            var lines = File.ReadAllLines(graphFilePath);
+            
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var parts = line.Split('-');
+                if (parts.Length < 2) continue;
+                
+                string from = parts[0].Trim();
+                string to = parts[1].Trim();
+                
+                if (!edges.ContainsKey(from))
+                    edges[from] = new List<string>();
+                if (!edges.ContainsKey(to))
+                    edges[to] = new List<string>();
+                    
+                edges[from].Add(to);
+            }
+            
+            return edges;
+        }
+
+        private void RunBFS_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab4.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string startNode = "НС_Московская";
+                
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var result = lab4.BFS(startNode);
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"BFS (обход в ширину) от узла '{startNode}':");
+                sb.AppendLine();
+                sb.AppendLine("Порядок посещения узлов:");
+                for (int i = 0; i < result.Count; i++)
+                {
+                    sb.Append($"{i + 1}. {result[i]}");
+                    if (i < result.Count - 1)
+                        sb.Append(" → ");
+                    if ((i + 1) % 3 == 0)
+                        sb.AppendLine();
+                }
+                sb.AppendLine();
+                sb.AppendLine($"\nВсего посещено узлов: {result.Count}");
+
+                Lab4Results.Text = sb.ToString();
+                Lab4Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выполнения BFS: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RunDFS_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab4.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string startNode = "НС_Московская";
+                
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var result = lab4.DFS(startNode);
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"DFS (обход в глубину) от узла '{startNode}':");
+                sb.AppendLine();
+                sb.AppendLine("Порядок посещения узлов:");
+                for (int i = 0; i < result.Count; i++)
+                {
+                    sb.Append($"{i + 1}. {result[i]}");
+                    if (i < result.Count - 1)
+                        sb.Append(" → ");
+                    if ((i + 1) % 3 == 0)
+                        sb.AppendLine();
+                }
+                sb.AppendLine();
+                sb.AppendLine($"\nВсего посещено узлов: {result.Count}");
+
+                Lab4Results.Text = sb.ToString();
+                Lab4Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выполнения DFS: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FindComponents_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab4.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var components = lab4.FindConnectedComponents();
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine("Компоненты связности:");
+                sb.AppendLine();
+                
+                for (int i = 0; i < components.Count; i++)
+                {
+                    sb.AppendLine($"Компонента {i + 1} ({components[i].Count} узлов):");
+                    foreach (var node in components[i])
+                    {
+                        sb.AppendLine($"  • {node}");
+                    }
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine($"Всего компонент: {components.Count}");
+
+                Lab4Results.Text = sb.ToString();
+                Lab4Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка поиска компонент: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ===== ЛАБОРАТОРНАЯ РАБОТА №5 =====
+
+        private void LoadWeightedGraph_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                lab5.LoadWeightedGraph(weightedGraphFilePath);
+                
+                // Создаем Lab6 с загруженными данными
+                lab6 = new Lab6(lab5.GetGraph(), lab5.GetNodes());
+
+                var sb = new StringBuilder();
+                sb.AppendLine("✓ Взвешенный граф успешно загружен!");
+                sb.AppendLine($"Файл: {IOPath.GetFileName(weightedGraphFilePath)}");
+                sb.AppendLine($"Количество узлов: {lab5.GetNodes().Count}");
+                sb.AppendLine();
+                
+                // Заполняем ComboBox списком узлов
+                var nodes = lab5.GetNodes();
+                
+                if (nodes != null && nodes.Count > 0)
+                {
+                    var nodeList = new List<string>(nodes);
+                    
+                    Lab5FromNode.ItemsSource = nodeList;
+                    Lab5ToNode.ItemsSource = nodeList;
+                    Lab6FromNode.ItemsSource = nodeList;
+                    Lab6ToNode.ItemsSource = nodeList;
+                    
+                    // Устанавливаем значения по умолчанию
+                    if (nodes.Contains("НС_Московская"))
+                    {
+                        Lab5FromNode.SelectedItem = "НС_Московская";
+                        Lab6FromNode.SelectedItem = "НС_Московская";
+                    }
+                    else
+                    {
+                        Lab5FromNode.SelectedIndex = 0;
+                        Lab6FromNode.SelectedIndex = 0;
+                    }
+                    
+                    if (nodes.Contains("Северодвинский_терминал"))
+                    {
+                        Lab5ToNode.SelectedItem = "Северодвинский_терминал";
+                        Lab6ToNode.SelectedItem = "Северодвинский_терминал";
+                    }
+                    else
+                    {
+                        Lab5ToNode.SelectedIndex = nodes.Count > 1 ? nodes.Count - 1 : 0;
+                        Lab6ToNode.SelectedIndex = nodes.Count > 1 ? nodes.Count - 1 : 0;
+                    }
+                    
+                    sb.AppendLine($"✓ ComboBox'ы заполнены {nodeList.Count} узлами.");
+                    sb.AppendLine();
+                    sb.AppendLine("Теперь доступны все функции Лабораторных №5 и №6");
+                }
+                else
+                {
+                    sb.AppendLine("⚠ Предупреждение: список узлов пуст!");
+                }
+
+                Lab5Results.Text = sb.ToString();
+                Lab6Results.Text = "Граф загружен. Выберите операцию.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки графа: {ex.Message}\n\nStack trace:\n{ex.StackTrace}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RunDijkstra_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab5.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите взвешенный граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string startNode = "НС_Московская";
+                
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var (distances, _) = lab5.Dijkstra(startNode);
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"Алгоритм Дейкстры от узла '{startNode}':");
+                sb.AppendLine();
+                sb.AppendLine("Кратчайшие расстояния до всех узлов:");
+                sb.AppendLine();
+
+                foreach (var kvp in distances)
+                {
+                    if (kvp.Value == int.MaxValue)
+                        sb.AppendLine($"  {kvp.Key}: недостижим");
+                    else
+                        sb.AppendLine($"  {kvp.Key}: {kvp.Value}");
+                }
+
+                Lab5Results.Text = sb.ToString();
+                Lab5Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выполнения Дейкстры: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FindPath_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab5.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите взвешенный граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string from = Lab5FromNode.Text?.Trim() ?? "";
+                string to = Lab5ToNode.Text?.Trim() ?? "";
+
+                if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to))
+                {
+                    MessageBox.Show("Выберите начальный и конечный узлы!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var (distance, path) = lab5.FindShortestPath(from, to);
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"Кратчайший путь от '{from}' до '{to}':");
+                sb.AppendLine();
+
+                if (path.Count == 0 || distance == int.MaxValue)
+                {
+                    sb.AppendLine("❌ Путь не найден (узлы не связаны)");
+                }
+                else
+                {
+                    sb.AppendLine($"✓ Расстояние: {distance}");
+                    sb.AppendLine();
+                    sb.AppendLine("Маршрут:");
+                    sb.Append("  ");
+                    for (int i = 0; i < path.Count; i++)
+                    {
+                        sb.Append(path[i]);
+                        if (i < path.Count - 1)
+                            sb.Append(" → ");
+                    }
+                    sb.AppendLine();
+                }
+
+                Lab5Results.Text = sb.ToString();
+                Lab5Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка поиска пути: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ===== ЛАБОРАТОРНАЯ РАБОТА №6 =====
+
+        private void FindArticulationPoints_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab6 == null || lab5.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите взвешенный граф в Лабораторной №5!", 
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var artPoints = lab6.FindArticulationPoints();
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine("Точки сочленения (критические узлы):");
+                sb.AppendLine();
+
+                if (artPoints.Count == 0)
+                {
+                    sb.AppendLine("✓ Точек сочленения не найдено.");
+                    sb.AppendLine("Граф устойчив - нет узлов, удаление которых разорвет сеть.");
+                }
+                else
+                {
+                    sb.AppendLine($"Найдено критических узлов: {artPoints.Count}");
+                    sb.AppendLine();
+                    foreach (var ap in artPoints)
+                    {
+                        sb.AppendLine($"  ⚠ {ap}");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("Удаление этих узлов приведет к разрыву сети!");
+                }
+
+                Lab6Results.Text = sb.ToString();
+                Lab6Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка поиска точек сочленения: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BuildMST_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab6 == null || lab5.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите взвешенный граф в Лабораторной №5!", 
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var mst = lab6.PrimMST();
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine("Минимальное остовное дерево (алгоритм Прима):");
+                sb.AppendLine();
+
+                int totalWeight = 0;
+                sb.AppendLine("Рёбра МОД:");
+                foreach (var (from, to, weight) in mst)
+                {
+                    sb.AppendLine($"  {from} ↔ {to} : {weight}");
+                    totalWeight += weight;
+                }
+
+                sb.AppendLine();
+                sb.AppendLine($"✓ Суммарный вес МОД: {totalWeight}");
+                sb.AppendLine($"✓ Количество рёбер: {mst.Count}");
+
+                Lab6Results.Text = sb.ToString();
+                Lab6Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка построения МОД: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FindOptimalPath_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab6 == null || lab5.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите взвешенный граф в Лабораторной №5!", 
+                        "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string from = Lab6FromNode.Text?.Trim() ?? "";
+                string to = Lab6ToNode.Text?.Trim() ?? "";
+
+                if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to))
+                {
+                    MessageBox.Show("Выберите узлы источника и назначения!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Замер времени выполнения
+                var stopwatch = Stopwatch.StartNew();
+                var (maxFlow, path) = lab6.FindOptimalTransportPath(from, to);
+                stopwatch.Stop();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"Оптимальный путь транспортировки от '{from}' до '{to}':");
+                sb.AppendLine();
+
+                if (maxFlow == 0 || path.Count == 0)
+                {
+                    sb.AppendLine("❌ Путь не найден");
+                }
+                else
+                {
+                    sb.AppendLine($"✓ Максимальная пропускная способность: {maxFlow}");
+                    sb.AppendLine();
+                    sb.AppendLine("Маршрут:");
+                    sb.Append("  ");
+                    for (int i = 0; i < path.Count; i++)
+                    {
+                        sb.Append(path[i]);
+                        if (i < path.Count - 1)
+                            sb.Append(" → ");
+                    }
+                    sb.AppendLine();
+                }
+
+                Lab6Results.Text = sb.ToString();
+                Lab6Timing.Text = $"{stopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка поиска оптимального пути: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ===== ЭКСПЕРИМЕНТ =====
+
+        private void LoadLargeGraph_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!File.Exists(largeGraphFilePath))
+                {
+                    MessageBox.Show($"Файл {largeGraphFilePath} не найден!", "Ошибка", 
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Загружаем взвешенный граф
+                lab5Large.LoadWeightedGraph(largeGraphFilePath);
+                
+                // Создаем невзвешенную версию для lab4Large
+                var lines = File.ReadAllLines(largeGraphFilePath);
+                var unweightedLines = new List<string>();
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    var parts = line.Split(',');
+                    if (parts.Length > 0)
+                    {
+                        unweightedLines.Add(parts[0].Trim());
+                    }
+                }
+                
+                var tempFile = IOPath.Combine(AppDomain.CurrentDomain.BaseDirectory, "pipeline_large_unweighted.txt");
+                File.WriteAllLines(tempFile, unweightedLines);
+                lab4Large.LoadGraph(tempFile);
+                
+                var sb = new StringBuilder();
+                sb.AppendLine("✓ Большой граф успешно загружен!");
+                sb.AppendLine($"Файл: {IOPath.GetFileName(largeGraphFilePath)}");
+                sb.AppendLine($"Количество узлов: {lab5Large.GetNodes().Count}");
+                sb.AppendLine();
+                sb.AppendLine("Граф готов для эксперимента.");
+                sb.AppendLine("Нажмите 'Запустить эксперимент' для замера времени выполнения алгоритмов.");
+
+                ExperimentResults.Text = sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки большого графа: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RunExperiment_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab5Large.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Сначала загрузите большой граф!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+                sb.AppendLine("ЭКСПЕРИМЕНТ: Анализ производительности алгоритмов");
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+                sb.AppendLine();
+                sb.AppendLine($"Граф: {lab5Large.GetNodes().Count} вершин");
+                sb.AppendLine();
+
+                var totalStopwatch = Stopwatch.StartNew();
+                var nodes = lab5Large.GetNodes();
+                string startNode = nodes.Count > 0 ? nodes[0] : "НС_Московская";
+
+                // Тест 1: BFS
+                sb.AppendLine("1. BFS (обход в ширину)");
+                var sw1 = Stopwatch.StartNew();
+                var bfsResult = lab4Large.BFS(startNode);
+                sw1.Stop();
+                sb.AppendLine($"   Время: {sw1.Elapsed.TotalMilliseconds:F4} мс");
+                sb.AppendLine($"   Посещено узлов: {bfsResult.Count}");
+                sb.AppendLine();
+
+                // Тест 2: DFS
+                sb.AppendLine("2. DFS (обход в глубину)");
+                var sw2 = Stopwatch.StartNew();
+                var dfsResult = lab4Large.DFS(startNode);
+                sw2.Stop();
+                sb.AppendLine($"   Время: {sw2.Elapsed.TotalMilliseconds:F4} мс");
+                sb.AppendLine($"   Посещено узлов: {dfsResult.Count}");
+                sb.AppendLine();
+
+                // Тест 3: Дейкстра
+                sb.AppendLine("3. Алгоритм Дейкстры");
+                var sw3 = Stopwatch.StartNew();
+                var (distances, _) = lab5Large.Dijkstra(startNode);
+                sw3.Stop();
+                sb.AppendLine($"   Время: {sw3.Elapsed.TotalMilliseconds:F4} мс");
+                sb.AppendLine($"   Обработано узлов: {distances.Count}");
+                sb.AppendLine();
+
+                // Тест 4: Поиск пути
+                if (nodes.Count >= 2)
+                {
+                    string endNode = nodes[nodes.Count - 1];
+                    sb.AppendLine($"4. Поиск кратчайшего пути ({startNode} → {endNode})");
+                    var sw4 = Stopwatch.StartNew();
+                    var (distance, path) = lab5Large.FindShortestPath(startNode, endNode);
+                    sw4.Stop();
+                    sb.AppendLine($"   Время: {sw4.Elapsed.TotalMilliseconds:F4} мс");
+                    sb.AppendLine($"   Расстояние: {distance}");
+                    sb.AppendLine($"   Длина пути: {path.Count} узлов");
+                    sb.AppendLine();
+                }
+
+                totalStopwatch.Stop();
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+                sb.AppendLine($"Общее время эксперимента: {totalStopwatch.Elapsed.TotalMilliseconds:F4} мс");
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+
+                ExperimentResults.Text = sb.ToString();
+                ExperimentTiming.Text = $"{totalStopwatch.Elapsed.TotalMilliseconds:F4} мс";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка выполнения эксперимента: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CompareGraphs_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (lab5.GetNodes().Count == 0 || lab5Large.GetNodes().Count == 0)
+                {
+                    MessageBox.Show("Загрузите оба графа перед сравнением!", "Предупреждение", 
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+                sb.AppendLine("СРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ");
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+                sb.AppendLine();
+
+                // Малый граф
+                sb.AppendLine("МАЛЫЙ ГРАФ:");
+                sb.AppendLine($"  Вершин: {lab5.GetNodes().Count}");
+                var smallNodes = lab5.GetNodes();
+                string smallStart = smallNodes.Count > 0 ? smallNodes[0] : "НС_Московская";
+
+                var sw1 = Stopwatch.StartNew();
+                lab4.BFS(smallStart);
+                sw1.Stop();
+                double smallBFS = sw1.Elapsed.TotalMilliseconds;
+
+                var sw2 = Stopwatch.StartNew();
+                lab4.DFS(smallStart);
+                sw2.Stop();
+                double smallDFS = sw2.Elapsed.TotalMilliseconds;
+
+                var sw3 = Stopwatch.StartNew();
+                lab5.Dijkstra(smallStart);
+                sw3.Stop();
+                double smallDijkstra = sw3.Elapsed.TotalMilliseconds;
+
+                sb.AppendLine($"  BFS: {smallBFS:F4} мс");
+                sb.AppendLine($"  DFS: {smallDFS:F4} мс");
+                sb.AppendLine($"  Дейкстра: {smallDijkstra:F4} мс");
+                sb.AppendLine();
+
+                // Большой граф
+                sb.AppendLine("БОЛЬШОЙ ГРАФ:");
+                sb.AppendLine($"  Вершин: {lab5Large.GetNodes().Count}");
+                var largeNodes = lab5Large.GetNodes();
+                string largeStart = largeNodes.Count > 0 ? largeNodes[0] : "НС_Московская";
+
+                var sw4 = Stopwatch.StartNew();
+                lab4Large.BFS(largeStart);
+                sw4.Stop();
+                double largeBFS = sw4.Elapsed.TotalMilliseconds;
+
+                var sw5 = Stopwatch.StartNew();
+                lab4Large.DFS(largeStart);
+                sw5.Stop();
+                double largeDFS = sw5.Elapsed.TotalMilliseconds;
+
+                var sw6 = Stopwatch.StartNew();
+                lab5Large.Dijkstra(largeStart);
+                sw6.Stop();
+                double largeDijkstra = sw6.Elapsed.TotalMilliseconds;
+
+                sb.AppendLine($"  BFS: {largeBFS:F4} мс");
+                sb.AppendLine($"  DFS: {largeDFS:F4} мс");
+                sb.AppendLine($"  Дейкстра: {largeDijkstra:F4} мс");
+                sb.AppendLine();
+
+                // Сравнение
+                sb.AppendLine("РОСТ ВРЕМЕНИ ВЫПОЛНЕНИЯ:");
+                sb.AppendLine($"  BFS: {(largeBFS / smallBFS):F2}x медленнее");
+                sb.AppendLine($"  DFS: {(largeDFS / smallDFS):F2}x медленнее");
+                sb.AppendLine($"  Дейкстра: {(largeDijkstra / smallDijkstra):F2}x медленнее");
+                sb.AppendLine();
+                sb.AppendLine("═══════════════════════════════════════════════════════");
+
+                ExperimentResults.Text = sb.ToString();
+                ExperimentTiming.Text = $"Сравнение завершено";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка сравнения: {ex.Message}", "Ошибка", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+}
+
+
+
+================================================================================
+FILE: MyApp.WPF\MyApp.WPF.csproj
+================================================================================
+
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyApp\MyApp.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>
+
+

@@ -1,0 +1,863 @@
+﻿<Window x:Class="MyApp.WPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Анализ трубопроводной сети" 
+        Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="#FAFAFA">
+    
+    <Window.Resources>
+        <!-- Linear Style Buttons -->
+        <Style x:Key="LinearButton" TargetType="Button">
+            <Setter Property="Background" Value="#5E6AD2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4E5AC1"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#3E4AB1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource LinearButton}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#5E6AD2"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="BorderBrush" Value="#5E6AD2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F6FF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="InputBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="#E1E4E8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="ResultBox" TargetType="TextBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#24292E"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="BorderBrush" Value="#E1E4E8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" 
+                Background="White" 
+                BorderBrush="#E1E4E8" 
+                BorderThickness="0,0,0,1"
+                Padding="32,24">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Анализ трубопроводной сети" 
+                               FontSize="24" 
+                               FontWeight="SemiBold" 
+                               Foreground="#24292E"/>
+                    <TextBlock Text="Лабораторные работы №4-6" 
+                               FontSize="14" 
+                               Foreground="#6A737D"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#F6F8FA" 
+                            CornerRadius="6" 
+                            Padding="12,6"
+                            Margin="0,0,8,0">
+                        <TextBlock Text="17 узлов" 
+                                   FontSize="12" 
+                                   Foreground="#6A737D"/>
+                    </Border>
+                    <Border Background="#F6F8FA" 
+                            CornerRadius="6" 
+                            Padding="12,6">
+                        <TextBlock Text="20 рёбер" 
+                                   FontSize="12" 
+                                   Foreground="#6A737D"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Tabs -->
+        <TabControl Grid.Row="1" 
+                    Margin="0" 
+                    BorderThickness="0"
+                    Background="Transparent">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border Name="Border" 
+                                        Background="Transparent" 
+                                        BorderThickness="0,0,0,2"
+                                        BorderBrush="Transparent"
+                                        Padding="24,16">
+                                    <ContentPresenter ContentSource="Header" 
+                                                      HorizontalAlignment="Center" 
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="BorderBrush" Value="#5E6AD2"/>
+                                        <Setter Property="Foreground" Value="#24292E"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#F6F8FA"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Foreground" Value="#6A737D"/>
+                </Style>
+            </TabControl.Resources>
+            
+            <!-- Lab 4 -->
+            <TabItem Header="Лабораторная №4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Построение графа. Алгоритмы обхода" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    BFS (обход в ширину) и DFS (обход в глубину)<LineBreak/>
+                                    Проверка достижимости узлов<LineBreak/>
+                                    Поиск компонент связности
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="140"
+                                    Click="LoadGraph_Click"/>
+                            <Button Content="Запустить BFS" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="140"
+                                    Margin="12,0,0,0"
+                                    Click="RunBFS_Click"/>
+                            <Button Content="Запустить DFS" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="140"
+                                    Margin="12,0,0,0"
+                                    Click="RunDFS_Click"/>
+                            <Button Content="Компоненты связности" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="180"
+                                    Margin="12,0,0,0"
+                                    Click="FindComponents_Click"/>
+                        </StackPanel>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="2" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab4Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="3" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab4Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="400"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Lab 5 -->
+            <TabItem Header="Лабораторная №5">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Взвешенный граф. Алгоритм Дейкстры" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Алгоритм Дейкстры для поиска кратчайших путей<LineBreak/>
+                                    Расчет расстояний от заданной вершины до всех остальных<LineBreak/>
+                                    Восстановление маршрута между двумя узлами
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить взвешенный граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="220"
+                                    Click="LoadWeightedGraph_Click"/>
+                            <Button Content="Запустить Дейкстру" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="180"
+                                    Margin="12,0,0,0"
+                                    Click="RunDijkstra_Click"/>
+                        </StackPanel>
+
+                        <!-- Path Input -->
+                        <Border Grid.Row="2" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" 
+                                           Text="От:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="1" 
+                                          x:Name="Lab5FromNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <TextBlock Grid.Column="2" 
+                                           Text="До:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="3" 
+                                          x:Name="Lab5ToNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <Button Grid.Column="4" 
+                                        Content="Найти путь" 
+                                        Style="{StaticResource LinearButton}"
+                                        Width="120"
+                                        Click="FindPath_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="3" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab5Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="4" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab5Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="350"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Lab 6 -->
+            <TabItem Header="Лабораторная №6">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Дополнительный анализ графа" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Поиск точек сочленения (критических узлов)<LineBreak/>
+                                    Построение минимального остовного дерева (алгоритм Прима)<LineBreak/>
+                                    Поиск оптимального пути транспортировки ресурса
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Точки сочленения" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="180"
+                                    Click="FindArticulationPoints_Click"/>
+                            <Button Content="Минимальное остовное дерево" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="240"
+                                    Margin="12,0,0,0"
+                                    Click="BuildMST_Click"/>
+                        </StackPanel>
+
+                        <!-- Transport Input -->
+                        <Border Grid.Row="2" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBlock Grid.Column="0" 
+                                           Text="Источник:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="1" 
+                                          x:Name="Lab6FromNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <TextBlock Grid.Column="2" 
+                                           Text="Назначение:" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="#6A737D"
+                                           Margin="0,0,12,0"/>
+                                <ComboBox Grid.Column="3" 
+                                          x:Name="Lab6ToNode" 
+                                          Height="32"
+                                          FontSize="13"
+                                          Margin="0,0,24,0"
+                                          IsEditable="True"/>
+                                <Button Grid.Column="4" 
+                                        Content="Оптимальный путь" 
+                                        Style="{StaticResource LinearButton}"
+                                        Width="160"
+                                        Click="FindOptimalPath_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="3" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="Lab6Timing" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="4" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="Lab6Results" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="350"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Эксперимент -->
+            <TabItem Header="Эксперимент">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="32,24">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Info -->
+                        <Border Grid.Row="0" 
+                                Background="#F6F8FA" 
+                                CornerRadius="6" 
+                                Padding="20"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="Эксперимент: Анализ производительности" 
+                                           FontSize="16" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Сравнение времени выполнения алгоритмов на графах разного размера:<LineBreak/>
+                                    • Малый граф: 17 вершин, 20 рёбер<LineBreak/>
+                                    • Большой граф: 50+ вершин, 100+ рёбер<LineBreak/><LineBreak/>
+                                    Измеряется время выполнения BFS, DFS, Дейкстры и других алгоритмов.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,24">
+                            <Button Content="Загрузить большой граф" 
+                                    Style="{StaticResource LinearButton}"
+                                    Width="200"
+                                    Click="LoadLargeGraph_Click"/>
+                            <Button Content="Запустить эксперимент" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="200"
+                                    Margin="12,0,0,0"
+                                    Click="RunExperiment_Click"/>
+                            <Button Content="Сравнить графы" 
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="160"
+                                    Margin="12,0,0,0"
+                                    Click="CompareGraphs_Click"/>
+                        </StackPanel>
+
+                        <!-- Timing Info -->
+                        <Border Grid.Row="2" 
+                                Background="#FFF9E6"
+                                BorderBrush="#FFD700" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="16"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⏱" 
+                                           FontSize="16" 
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+                                <TextBlock Text="Время выполнения: " 
+                                           FontWeight="SemiBold"
+                                           Foreground="#6A737D"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ExperimentTiming" 
+                                           Text="—"
+                                           FontWeight="Bold"
+                                           Foreground="#24292E"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Results -->
+                        <Border Grid.Row="3" 
+                                Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBox x:Name="ExperimentResults" 
+                                         Style="{StaticResource ResultBox}"
+                                         TextWrapping="Wrap" 
+                                         IsReadOnly="True"
+                                         MinHeight="400"/>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Справка -->
+            <TabItem Header="Справка">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="32,24">
+                        
+                        <!-- Общая информация -->
+                        <Border Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,24">
+                            <StackPanel>
+                                <TextBlock Text="О программе" 
+                                           FontSize="18" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,16"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="22">
+                                    Программа предназначена для анализа трубопроводной сети с узлами и насосными станциями. 
+                                    Реализует три лабораторные работы по алгоритмам на графах.<LineBreak/><LineBreak/>
+                                    
+                                    Граф содержит 17 узлов (насосные станции и трубопроводы) и 20 рёбер (соединения между узлами).
+                                    Каждое ребро имеет вес, представляющий пропускную способность трубы.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 4 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №4: Построение графа. Алгоритмы обхода" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="BFS (Обход в ширину)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Алгоритм обходит граф уровень за уровнем, используя очередь. Начинает с начального узла 
+                                    и посещает все его соседей, затем соседей соседей и т.д. Подходит для поиска кратчайшего 
+                                    пути по количеству рёбер.
+                                </TextBlock>
+                                
+                                <TextBlock Text="DFS (Обход в глубину)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Алгоритм идет как можно глубже по одной ветке, используя рекурсию. Подходит для проверки 
+                                    связности графа и обнаружения циклов.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Компоненты связности" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Находит группы узлов, между которыми существуют пути. Если граф связный, будет одна компонента.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 5 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №5: Взвешенный граф. Алгоритм Дейкстры" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="Алгоритм Дейкстры" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Находит кратчайшие пути от одной вершины до всех остальных в графе с неотрицательными весами. 
+                                    На каждом шаге выбирает непосещённую вершину с минимальным известным расстоянием и обновляет 
+                                    расстояния до её соседей.<LineBreak/><LineBreak/>
+                                    
+                                    Сложность: O((V + E) log V), где V - количество вершин, E - количество рёбер.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Применение" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Поиск оптимального маршрута транспортировки ресурса с минимальными затратами. 
+                                    Программа восстанавливает полный путь от начального до конечного узла.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Лабораторная 6 -->
+                        <Border Background="#F6F8FA"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Лабораторная №6: Дополнительный анализ графа" 
+                                           FontSize="15" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,12"/>
+                                
+                                <TextBlock Text="Точки сочленения" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Узлы, удаление которых разрывает граф на несколько компонент. Это критически важные узлы 
+                                    инфраструктуры, выход из строя которых нарушит работу всей сети.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Минимальное остовное дерево (МОД)" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           Margin="0,0,0,12">
+                                    Подграф, соединяющий все вершины с минимальной суммой весов рёбер. Алгоритм Прима строит 
+                                    дерево жадно, добавляя самое дешёвое ребро к уже построенному дереву.<LineBreak/><LineBreak/>
+                                    
+                                    Применение: показывает минимальную инфраструктуру для связи всех узлов сети.
+                                </TextBlock>
+                                
+                                <TextBlock Text="Оптимальный путь транспортировки" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#5E6AD2"
+                                           Margin="0,0,0,6"/>
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="20">
+                                    Находит путь с максимальной пропускной способностью между двумя узлами. Использует 
+                                    модифицированный алгоритм Дейкстры, где вместо суммы весов максимизируется минимум на пути.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Инструкция -->
+                        <Border Background="White"
+                                BorderBrush="#E1E4E8" 
+                                BorderThickness="1" 
+                                CornerRadius="6"
+                                Padding="24">
+                            <StackPanel>
+                                <TextBlock Text="Порядок работы" 
+                                           FontSize="18" 
+                                           FontWeight="SemiBold"
+                                           Foreground="#24292E"
+                                           Margin="0,0,0,16"/>
+                                
+                                <TextBlock TextWrapping="Wrap" 
+                                           Foreground="#6A737D" 
+                                           FontSize="13"
+                                           LineHeight="22">
+                                    1. Откройте вкладку "Лабораторная №4"<LineBreak/>
+                                    2. Нажмите "Загрузить граф" для загрузки структуры сети<LineBreak/>
+                                    3. Используйте кнопки BFS, DFS для обхода графа<LineBreak/>
+                                    4. Перейдите на вкладку "Лабораторная №5"<LineBreak/>
+                                    5. Нажмите "Загрузить взвешенный граф"<LineBreak/>
+                                    6. Введите начальный и конечный узлы для поиска пути<LineBreak/>
+                                    7. Перейдите на вкладку "Лабораторная №6"<LineBreak/>
+                                    8. Выполните дополнительный анализ графа<LineBreak/><LineBreak/>
+                                    
+                                    Все результаты отображаются в текстовом поле справа от кнопок управления.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Window>
